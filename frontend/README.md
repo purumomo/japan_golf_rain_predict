@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Golf Rain frontend
 
-## Getting Started
+Next.js / TypeScript frontend. The separate [Flask backend](../backend/README.md) must run at http://localhost:5001 for search and forecasts. The frontend has no API route handlers or provider integrations; Next.js rewrites only forward `/api/*` requests to Flask.
 
-First, run the development server:
+From this directory:
 
-```bash
+```sh
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Enter a course name such as `太平洋クラブ 市原` or `PGM総成`, click Search, confirm the address and map, then select a date and tee time. No local course directory is bundled.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The browser calls relative `/api/*` URLs on the frontend origin. Next.js proxies these requests to `http://127.0.0.1:5001` by default, so no CORS is needed. Copy `.env.example` to `.env.local` to configure another Flask address:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```sh
+BACKEND_URL=http://127.0.0.1:5001
+```
 
-## Learn More
+This setting is server-only. Restart development or rebuild production after changing it because rewrite destinations are resolved during configuration/build. In deployment, use a Flask address reachable from the Next.js host; do not use localhost for a backend on a different machine. The browser always accesses the frontend origin, even when Flask is hosted separately.
 
-To learn more about Next.js, take a look at the following resources:
+```sh
+npm run lint
+npm test
+npm run build
+npm run typecheck
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Frontend tests cover JST date-picker bounds; live integration checks cover GET/POST proxying. The backend owns forecast calculations and their tests. See the [PRD](../docs/PRD.md) and [online search documentation](../docs/COURSE_SEARCH.md).

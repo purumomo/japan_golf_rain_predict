@@ -4,17 +4,19 @@
 A mobile-first Japanese golf-course weather web app. Users select a golf course, a date and tee-off time, then see forecast rain risk during their planned round (default five hours). The key pain point is that general weather apps can be inaccurate for a specific golf course. The MVP focuses on location-specific, transparent information, **not** a claim of superior forecast accuracy.
 
 ## 2. Audience
-Golfers booking rounds in Japan. Start with approximately 30 to 50 verified golf courses in the Kanto region.
+Golfers booking rounds in Japan, initially around Tokyo, including Chiba, Saitama, Yamanashi, Gunma and Tochigi. Search real courses online instead of maintaining a local directory (user instruction, 2026-11-06). PGM and Taiheiyo courses can be found by their mapped names, subject to the place provider's coverage.
 
 ## 3. Core user journey
-1. Search and select a golf course from a local list.
-2. Choose a future date within the provider's available forecast horizon.
-3. Choose a tee time, such as 08:30.
-4. View hourly precipitation probability and precipitation amount across the next five hours, including wind speed when available.
-5. Highlight riskier hours; display the data source and most recent forecast time.
+1. Enter a golf-course name and explicitly submit an online place search.
+2. Check the candidate names, addresses and map links, then select the intended course. Do not automatically pick the first match.
+3. Choose a future date within the provider's available forecast horizon.
+4. Choose a tee time, such as 08:30.
+5. View hourly precipitation probability and precipitation amount across the next five hours, including wind speed when available.
+6. Highlight riskier hours; display the data source and most recent forecast time.
 
 ## 4. Required features
-- Course search by name, using a bundled JSON dataset with real names, accurate latitude/longitude, and source attribution.
+- Flask-hosted online course search through Photon / OpenStreetMap. Return named Japanese golf-course features with coordinates, address, source link and retrieval time. No bundled course JSON or fake fallback results.
+- Explicit search submission, short-lived bounded memory caching, throttling, timeouts and clear empty/error states. Prefer results near Tokyo while accepting courses in Japan.
 - Date and tee-time selection, using Asia/Tokyo for all displayed times.
 - Live forecast request for the course coordinates, using an officially documented weather API such as Open-Meteo, subject to applicable usage terms.
 - Readable mobile-first hourly chart and a plain-language risk summary.
@@ -37,9 +39,11 @@ Golfers booking rounds in Japan. Start with approximately 30 to 50 verified golf
 
 ## 7. Technical approach
 - Next.js with TypeScript and Tailwind CSS, using existing stable and supported versions verified before installation.
-- Simple static `courses.json` file.
+- Separate Flask backend in `backend/`, with independent dependencies, process and deployment. The browser requests same-origin `/api/*`; Next.js rewrites forward these requests to Flask using server-only `BACKEND_URL`. CORS is unnecessary for this flow. No Next.js API routes for course or weather logic (user instruction, 2026-11-06).
+- A server-side place-search API and selected course coordinates passed to the forecast API. Validate coordinates and request fields; no database or permanent course storage.
+- Configurable Photon endpoint, using its documented golf-course category and Japan filters. The public demo permits reasonable use but has no availability guarantee; use an appropriate dedicated endpoint before scaling traffic. See `docs/COURSE_SEARCH.md`.
 - Open-Meteo or an alternative documented forecast API with precipitation probability, precipitation amount and optional wind speed; inspect current documentation before coding.
-- Deployable to Vercel; no database needed.
+- The Next.js frontend can deploy to Vercel; Flask runs on a separate Python-capable service. No database needed.
 - Keep weather source attribution and licensing/usage limitations visible. Check commercial usage terms before monetizing.
 - Since independent weather forecasting in Japan can trigger licensing requirements, display and contextualize licensed source forecasts instead of generating a proprietary probability for public release.
 
@@ -49,7 +53,9 @@ Golfers booking rounds in Japan. Start with approximately 30 to 50 verified golf
 - Loading, failure, and unsupported dates are handled without fake results.
 - Works on a mobile-sized screen.
 - The maximum hourly rain probability is labeled correctly.
+- No course directory is shipped. A real online result must be explicitly selected before requesting its coordinate-based forecast. Changing a search must invalidate previous results and selection.
 - `lint`, TypeScript checks, tests for time-window logic, and production build pass.
+- Flask health, search, forecast and failure states work independently of Next.js, and same-origin GET/POST forwarding works without CORS; backend lint and unit tests pass. Live search-to-forecast integration is verified when outbound network access is available.
 
 ## 9. Future hypotheses (do not build yet)
 - Add a second weather provider with comparable definitions and transparent disagreement.
