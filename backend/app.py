@@ -22,12 +22,17 @@ def create_app(test_config=None):
     app.config.from_mapping(
         MAX_CONTENT_LENGTH=16 * 1024,
         PHOTON_SEARCH_URL=os.environ.get("PHOTON_SEARCH_URL", "https://photon.komoot.io/api/"),
+        OVERPASS_SEARCH_URL=os.environ.get(
+            "OVERPASS_SEARCH_URL", "https://overpass.private.coffee/api/interpreter"
+        ),
         FORECAST_FETCHER=fetch_forecast_window,
     )
     if test_config:
         app.config.update(test_config)
     app.json.ensure_ascii = False
-    app.extensions["course_search"] = CourseSearch(app.config["PHOTON_SEARCH_URL"])
+    app.extensions["course_search"] = CourseSearch(
+        app.config["PHOTON_SEARCH_URL"], overpass_endpoint=app.config["OVERPASS_SEARCH_URL"]
+    )
 
     @app.errorhandler(ApiError)
     def api_error(error):

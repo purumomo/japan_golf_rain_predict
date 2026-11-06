@@ -18,7 +18,7 @@ The backend listens at http://127.0.0.1:5001. Port 5001 avoids macOS services th
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Service health; no upstream call |
-| GET | `/api/courses?q=...` | Explicit Photon / OpenStreetMap golf-course search |
+| GET | `/api/courses?q=...` | Photon search with a PGM-prefix retry and Overpass fallback |
 | POST | `/api/forecast` | Real Open-Meteo forecast for `{ course, date, teeTime }` |
 
 A forecast `course` is the selected object returned by search, including `id`, `name`, `prefecture`, `address`, `latitude`, `longitude`, and `sourceUrl`. The response shape stays compatible with the frontend. Invalid input returns 400; unsupported dates return 422 with current bounds; search throttling returns 429; provider failures return 502. No mock fallback values are served.
@@ -31,6 +31,7 @@ Copy `.env.example` to `.env` and edit the values as needed. `app.py` explicitly
 | --- | --- | --- |
 | `PORT` | `5001` | Local `python app.py` port |
 | `PHOTON_SEARCH_URL` | `https://photon.komoot.io/api/` | Server-side Photon-compatible search endpoint |
+| `OVERPASS_SEARCH_URL` | `https://overpass.private.coffee/api/interpreter` | Free name-fragment fallback; empty disables it |
 
 No API key is needed for the default providers. Keep any future credentials only in backend environment variables. The frontend server forwards `/api/*` using its private `BACKEND_URL`; the browser uses relative URLs and Flask needs no CORS configuration.
 

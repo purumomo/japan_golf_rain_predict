@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from threading import Lock
 
 from http_client import ApiError, fetch_json
+from overpass import course_features, course_name_query
 
 
 def is_number(value):
@@ -41,7 +42,7 @@ def normalize_query(query):
     return " ".join(unicodedata.normalize("NFKC", query).split())
 
 
-def parse_course_results(payload):
+def parse_course_results(payload, limit=15):
     if not isinstance(payload, dict) or not isinstance(payload.get("features"), list):
         raise ApiError(502, "Invalid place search response.")
     courses = []
@@ -82,12 +83,13 @@ def parse_course_results(payload):
         if valid_course(course) and course_id not in seen:
             seen.add(course_id)
             courses.append(course)
-    return courses[:15]
+    return courses[:limit]
 
 
 class CourseSearch:
-    def __init__(self, endpoint, get_json=fetch_json, clock=time.monotonic):
+    def __init__(self, endpoint, get_json=fetch_json, clock=time.monotonic, overpass_endpoint=None):
         self.endpoint = endpoint
+        self.overpass_endpoint = overpass_endpoint
         self.get_json = get_json
         self.clock = clock
         self.cache = {}
@@ -114,23 +116,39 @@ class CourseSearch:
                 future = Future()
                 self.pending[key] = future
         if not owner:
-            return future.result(timeout=20)
+            return future.result(timeout=60)
         try:
-            payload = self.get_json(
-                self.endpoint,
-                {
-                    "q": query,
-                    "limit": 15,
-                    "include": "osm.leisure.golf_course",
-                    "countrycode": "JP",
-                    "lat": 35.68,
-                    "lon": 139.76,
-                },
-            )
+            params = {
+                "q": query,
+                "limit": 15,
+                "include": "osm.leisure.golf_course",
+                "countrycode": "JP",
+                "lat": 35.68,
+                "lon": 139.76,
+            }
+            payload = self.get_json(self.endpoint, params)
+            courses = parse_course_results(payload)
+            provider = "Photon / OpenStreetMap"
+            # Photon may only match a Japanese name when its Latin brand prefix is present.
+            if not courses and re.fullmatch(r"[\u3040-\u30ff\u3400-\u9fff]+", query):
+                payload = self.get_json(self.endpoint, {**params, "q": f"PGM{query}"})
+                courses = [
+                    course for course in parse_course_results(payload)
+                    if query.casefold() in normalize_query(course["name"]).casefold()
+                ]
+            if not courses and self.overpass_endpoint:
+                payload = self.get_json(self.overpass_endpoint, {"data": course_name_query(query)})
+                courses = parse_course_results(course_features(payload), limit=50)
+                courses.sort(key=lambda course: (
+                    (course["latitude"] - 35.68) ** 2
+                    + ((course["longitude"] - 139.76) * math.cos(math.radians(35.68))) ** 2
+                ))
+                courses = courses[:15]
+                provider = "Overpass / OpenStreetMap"
             result = {
-                "courses": parse_course_results(payload),
+                "courses": courses,
                 "source": {
-                    "provider": "Photon / OpenStreetMap",
+                    "provider": provider,
                     "fetchedAt": datetime.now(timezone.utc).isoformat(),
                     "attribution": "© OpenStreetMap contributors, ODbL 1.0",
                 },

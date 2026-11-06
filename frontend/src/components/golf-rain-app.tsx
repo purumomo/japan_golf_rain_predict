@@ -153,7 +153,7 @@ const translations: Record<Language, TranslationSet> = {
     precipitationLabel: "降水量",
     windLabel: "風速",
     footerSource: "天気予報の提供元：Open-Meteo Forecast API / 時刻はすべて日本標準時（JST）で表示しています。",
-    footerCourseData: "ゴルフ場検索：Photon / © OpenStreetMap contributors（ODbL 1.0）。地図上の名称や位置が最新でない場合があります。",
+    footerCourseData: "ゴルフ場検索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地図上の名称や位置が最新でない場合があります。",
     footerWarning: "注意: 予報はモデル出力であり、実測や的中保証ではありません。独自のラウンド全体降水確率は表示していません。",
     riskLabels: { low: "低め", medium: "やや高め", high: "高め" },
     riskSummaries: {
@@ -213,7 +213,7 @@ const translations: Record<Language, TranslationSet> = {
     precipitationLabel: "降水量",
     windLabel: "风速",
     footerSource: "天气来源：Open-Meteo Forecast API / 所有显示时间均为 JST。",
-    footerCourseData: "球场搜索：Photon / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
+    footerCourseData: "球场搜索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
     footerWarning: "注意：预报属于模型输出，并非实测，也不保证准确。页面不会生成自定义的整轮降雨概率。",
     riskLabels: { low: "较低", medium: "中等", high: "较高" },
     riskSummaries: {
@@ -273,7 +273,7 @@ const translations: Record<Language, TranslationSet> = {
     precipitationLabel: "Precipitation",
     windLabel: "Wind speed",
     footerSource: "Weather source: Open-Meteo Forecast API / All displayed times use JST.",
-    footerCourseData: "Course search: Photon / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
+    footerCourseData: "Course search: Photon / Overpass / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
     footerWarning: "Note: Forecasts are model output, not observed rain, and are not guaranteed. The app does not invent a whole-round probability.",
     riskLabels: { low: "Low", medium: "Moderate", high: "High" },
     riskSummaries: {
@@ -321,6 +321,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchFetchedAt, setSearchFetchedAt] = useState<string | null>(null);
+  const [searchProvider, setSearchProvider] = useState<string | null>(null);
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
 
@@ -343,6 +344,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
     setIsSearching(false);
     setSearchError(null);
     setSearchFetchedAt(null);
+    setSearchProvider(null);
     setErrorMessage(null);
   }
 
@@ -359,9 +361,10 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
     setErrorMessage(null);
     setHasSearched(false);
     setSearchFetchedAt(null);
+    setSearchProvider(null);
     try {
       const response = await fetch(`/api/courses?q=${encodeURIComponent(query)}`, { signal: controller.signal });
-      const payload = await response.json() as { courses: GolfCourse[]; source: { fetchedAt: string } };
+      const payload = await response.json() as { courses: GolfCourse[]; source: { fetchedAt: string; provider: string } };
       if (sequence !== searchSequence.current) return;
       if (!response.ok) {
         setSearchError(response.status === 429 ? t.searchRateLimit : t.searchError);
@@ -369,6 +372,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
       }
       setCourses(payload.courses);
       setSearchFetchedAt(payload.source.fetchedAt);
+      setSearchProvider(payload.source.provider);
       setHasSearched(true);
     } catch {
       if (!controller.signal.aborted && sequence === searchSequence.current) setSearchError(t.searchError);
@@ -491,7 +495,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </p>
             {searchError ? <p role="alert" className="text-sm text-rose-600">{searchError}</p> : null}
             {searchFetchedAt ? <p className="text-xs text-slate-500">
-              {t.sourceLabel}: Photon / OpenStreetMap · {t.fetchedAtLabel}: {formatFetchTime(searchFetchedAt, language)}
+              {t.sourceLabel}: {searchProvider} · {t.fetchedAtLabel}: {formatFetchTime(searchFetchedAt, language)}
             </p> : null}
           </div>
 

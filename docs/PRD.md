@@ -15,7 +15,7 @@ Golfers booking rounds in Japan, initially around Tokyo, including Chiba, Saitam
 6. Highlight riskier hours; display the data source and most recent forecast time.
 
 ## 4. Required features
-- Flask-hosted online course search through Photon / OpenStreetMap. Return named Japanese golf-course features with coordinates, address, source link and retrieval time. No bundled course JSON or fake fallback results.
+- Flask-hosted online course search through Photon / OpenStreetMap, with one PGM-prefix retry for empty Japanese-name searches and a free Overpass name-fragment fallback when Photon still returns no courses. Return named Japanese golf-course features with coordinates, address, source link and retrieval time. No bundled course JSON or fake fallback results.
 - Explicit search submission, short-lived bounded memory caching, throttling, timeouts and clear empty/error states. Prefer results near Tokyo while accepting courses in Japan.
 - Date and tee-time selection, using Asia/Tokyo for all displayed times.
 - Live forecast request for the course coordinates, using an officially documented weather API such as Open-Meteo, subject to applicable usage terms.
@@ -41,7 +41,7 @@ Golfers booking rounds in Japan, initially around Tokyo, including Chiba, Saitam
 - Next.js with TypeScript and Tailwind CSS, using existing stable and supported versions verified before installation.
 - Separate Flask backend in `backend/`, with independent dependencies, process and deployment. The browser requests same-origin `/api/*`; Next.js rewrites forward these requests to Flask using server-only `BACKEND_URL`. CORS is unnecessary for this flow. No Next.js API routes for course or weather logic (user instruction, 2026-11-06).
 - A server-side place-search API and selected course coordinates passed to the forecast API. Validate coordinates and request fields; no database or permanent course storage.
-- Configurable Photon endpoint, using its documented golf-course category and Japan filters. The public demo permits reasonable use but has no availability guarantee; use an appropriate dedicated endpoint before scaling traffic. See `docs/COURSE_SEARCH.md`.
+- Configurable Photon endpoint, using its documented golf-course category and Japan filters. The public demo permits reasonable use but has no availability guarantee; use an appropriate dedicated endpoint before scaling traffic. Use a configurable free Overpass endpoint for Japanese name fragments that Photon cannot match. See `docs/COURSE_SEARCH.md`.
 - Open-Meteo or an alternative documented forecast API with precipitation probability, precipitation amount and optional wind speed; inspect current documentation before coding.
 - The Next.js frontend can deploy to Vercel; Flask runs on a separate Python-capable service. No database needed.
 - Keep weather source attribution and licensing/usage limitations visible. Check commercial usage terms before monetizing.

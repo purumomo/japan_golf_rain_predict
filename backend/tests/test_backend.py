@@ -1,5 +1,7 @@
 import copy
+import json
 import os
+import re
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -11,6 +13,7 @@ from unittest.mock import Mock, patch
 from app import create_app
 from courses import CourseSearch, parse_course_results, valid_course
 from http_client import ApiError, fetch_json
+from overpass import course_features, course_name_query
 from tee_window import build_round_window, forecast_bounds, select_overlapping_hours, summarize_risk
 from weather import fetch_forecast_window
 
@@ -108,6 +111,100 @@ class WindowTests(unittest.TestCase):
 
 
 class SearchTests(unittest.TestCase):
+    def test_japanese_fragment_tries_brand_prefix_before_overpass(self):
+        feature = copy.deepcopy(FEATURE)
+        feature["properties"]["name"] = "Mock PGM総成ゴルフクラブ"
+        get_json = Mock(side_effect=[{"features": []}, {"features": [feature]}])
+        service = CourseSearch("photon", get_json=get_json, overpass_endpoint="overpass")
+        result = service.search(" 総成 ")
+        self.assertEqual(result["courses"][0]["name"], "Mock PGM総成ゴルフクラブ")
+        self.assertEqual(result["source"]["provider"], "Photon / OpenStreetMap")
+        self.assertTrue(valid_course(result["courses"][0]))
+        self.assertEqual([call.args[1]["q"] for call in get_json.call_args_list], ["総成", "PGM総成"])
+        self.assertTrue(all(call.args[0] == "photon" for call in get_json.call_args_list))
+        self.assertEqual(service.search("総成"), result)
+        self.assertEqual(get_json.call_count, 2)
+
+    def test_brand_prefix_does_not_return_unrelated_fuzzy_results(self):
+        get_json = Mock(side_effect=[{"features": []}, {"features": [FEATURE]}, {"elements": []}])
+        service = CourseSearch("photon", get_json=get_json, overpass_endpoint="overpass")
+        self.assertEqual(service.search("総成")["courses"], [])
+        self.assertEqual(get_json.call_args.args[0], "overpass")
+
+    def test_brand_prefix_is_not_added_to_brand_or_address_queries(self):
+        for query in ["PGM", "PGM総成", "総成 千葉", "unknown"]:
+            get_json = Mock(return_value={"features": []})
+            self.assertEqual(CourseSearch("photon", get_json=get_json).search(query)["courses"], [])
+            get_json.assert_called_once()
+
+    def test_name_fragment_fallback_returns_course_and_caches_source(self):
+        element = {
+            "type": "way", "id": 123,
+            "center": {"lat": 35.8, "lon": 140.3},
+            "tags": {"leisure": "golf_course", "name": "Mock PGM総成ゴルフクラブ"},
+        }
+        get_json = Mock(side_effect=[{"features": []}, {"features": []}, {"elements": [element]}])
+        service = CourseSearch("photon", get_json=get_json, overpass_endpoint="overpass")
+        result = service.search("総成")
+        self.assertEqual(result["courses"][0]["name"], "Mock PGM総成ゴルフクラブ")
+        self.assertEqual(result["courses"][0]["sourceUrl"], COURSE["sourceUrl"])
+        self.assertTrue(valid_course(result["courses"][0]))
+        self.assertEqual(result["source"]["provider"], "Overpass / OpenStreetMap")
+        self.assertEqual(get_json.call_args.args[0], "overpass")
+        self.assertIn('~"総成",i]', get_json.call_args.args[1]["data"])
+        self.assertEqual(service.search(" 総成 "), result)
+        self.assertEqual(get_json.call_count, 3)
+
+    def test_photon_match_does_not_trigger_fallback(self):
+        get_json = Mock(return_value={"features": [FEATURE]})
+        service = CourseSearch("photon", get_json=get_json, overpass_endpoint="overpass")
+        self.assertEqual(service.search("PGM")["source"]["provider"], "Photon / OpenStreetMap")
+        get_json.assert_called_once()
+
+    def test_fallback_failure_is_not_cached_as_empty(self):
+        clock = Mock(return_value=100)
+        get_json = Mock(side_effect=[
+            {"features": []}, {"features": []}, ApiError(502, "timeout"),
+            {"features": []}, {"features": []}, {"elements": []},
+        ])
+        service = CourseSearch("photon", get_json=get_json, clock=clock, overpass_endpoint="overpass")
+        with self.assertRaises(ApiError):
+            service.search("総成")
+        self.assertFalse(service.cache)
+        self.assertFalse(service.pending)
+        clock.return_value = 102
+        self.assertEqual(service.search("総成")["courses"], [])
+        self.assertEqual(get_json.call_count, 6)
+
+    def test_overpass_runtime_errors_are_not_empty_results(self):
+        for payload in [{}, {"elements": "bad"}, {"elements": [], "remark": "runtime error"}]:
+            with self.assertRaises(ApiError):
+                course_features(payload)
+
+    def test_overpass_filters_invalid_features_and_deduplicates(self):
+        element = {
+            "type": "node", "id": 123, "lat": 35.8, "lon": 140.3,
+            "tags": {"leisure": "golf_course", "name": "Mock Course"},
+        }
+        invalid = [
+            None, {}, {**element, "lat": True}, {**element, "lon": float("nan")},
+            {**element, "type": "bogus"},
+            {**element, "tags": {"leisure": "parking", "name": "Mock Parking"}},
+            {**element, "tags": {**element["tags"], "addr:country": "US"}},
+        ]
+        courses = parse_course_results(course_features({"elements": [element, element, *invalid]}))
+        self.assertEqual(len(courses), 1)
+        self.assertTrue(valid_course(courses[0]))
+
+    def test_overpass_query_treats_input_as_literal_text(self):
+        query = '総成.*"];out;('
+        statement = course_name_query(query)
+        encoded_pattern = statement.split(')$"~', 1)[1].split(',i](area.japan)', 1)[0]
+        self.assertEqual(re.compile(json.loads(encoded_pattern)).fullmatch(query).group(), query)
+        self.assertIsNone(re.search(json.loads(encoded_pattern), "総成anything"))
+        self.assertIn('["ISO3166-1"="JP"]', statement)
+        self.assertIn('["leisure"="golf_course"]', statement)
+
     def test_filters_duplicates_wrong_country_and_non_courses(self):
         wrong = copy.deepcopy(FEATURE)
         wrong["properties"]["countrycode"] = "US"
