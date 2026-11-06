@@ -12,7 +12,7 @@ type Hour = {
 
 const copy = {
   zh: {
-    title: "这场雨，打起来是什么感觉？", live: "逐小时预报 · JST", demo: "雨量体验 · 示例，非球场预报",
+    title: "雨量与打球体验", live: "逐小时预报 · JST", demo: "雨量体验 · 示例，非球场预报",
     select: "选择预报时段", examples: "切换示例雨量", amount: "该小时预报降水量", exampleAmount: "示例：1 小时降水量",
     pause: "暂停动画", play: "播放动画", unknown: "该小时缺少雨量数据，暂不展示雨势。",
     note: "动画帮你感受雨有多大，实际雨势可能时大时小。当天能不能打，还要看球场通知和现场情况。",
@@ -27,7 +27,7 @@ const copy = {
     ],
   },
   ja: {
-    title: "この雨、プレーへの影響は？", live: "時間別予報 · JST", demo: "雨量の体感 · サンプル（予報ではありません）",
+    title: "雨量とプレーへの影響", live: "時間別予報 · JST", demo: "雨量の体感 · サンプル（予報ではありません）",
     select: "予報時間を選択", examples: "サンプル雨量を切り替え", amount: "この1時間の予報降水量", exampleAmount: "サンプル：1時間の降水量",
     pause: "アニメーションを停止", play: "アニメーションを再生", unknown: "この時間の雨量データがないため、雨の表現を表示できません。",
     note: "雨の強さをイメージするためのアニメーションです。実際には強く降ったり弱まったりします。プレーできるかは、ゴルフ場の案内と当日の状況を確認してください。",
@@ -42,7 +42,7 @@ const copy = {
     ],
   },
   en: {
-    title: "What could this rain feel like on course?", live: "Hourly forecast · JST", demo: "Rain guide · Illustrative examples, not a forecast",
+    title: "Rainfall and your round", live: "Hourly forecast · JST", demo: "Rain guide · Illustrative examples, not a forecast",
     select: "Choose a forecast hour", examples: "Choose an example amount", amount: "Forecast precipitation in this hour", exampleAmount: "Example: precipitation over one hour",
     pause: "Pause animation", play: "Play animation", unknown: "Rainfall data is missing for this hour; no rain scene is shown.",
     note: "The animation gives you a feel for the rain. Actual rain may get heavier or lighter. Check course updates and conditions on the day before playing.",
