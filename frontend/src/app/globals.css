@@ -52,6 +52,34 @@ select {
   background: rgba(31, 111, 235, 0.2);
 }
 
+.temperature-fill {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: temperature-reveal 0.8s ease-out both;
+}
+
+.weather-wind-flow {
+  stroke-dasharray: 14 10;
+  animation: weather-wind-flow 2s linear infinite;
+}
+
+@keyframes temperature-reveal {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes weather-wind-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -24; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .temperature-fill,
+  .weather-wind-flow {
+    animation: none;
+  }
+}
+
 .rain-scene {
   position: relative;
   overflow: hidden;

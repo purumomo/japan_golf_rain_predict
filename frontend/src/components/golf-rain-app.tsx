@@ -7,7 +7,6 @@ import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
 import { RainImpact } from "@/components/rain-impact";
 import type { GolfCourse } from "@/lib/courses";
 import type { Language } from "@/lib/language";
-import { pageContent } from "@/lib/page-content";
 import { ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
 type RiskLevel = "low" | "medium" | "high";
@@ -601,8 +600,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 </p>
               </div>
 
-              <HourlyWeather language={language} hours={forecast.hours}
-                selectedTime={selectedForecastHour} onSelect={setSelectedForecastHour} />
+              <HourlyWeather language={language} hours={forecast.hours} />
 
               <div className="rounded-2xl bg-slate-50 p-4 text-xs leading-6 text-slate-600">
                 {t.sourceNotes.map((note) => (
@@ -612,12 +610,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           )}
         </section>
-      </section>
-
-      <section aria-labelledby="about-golf-rain" className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5 text-sm leading-7 text-slate-600 sm:p-6">
-        <h2 id="about-golf-rain" className="text-lg font-semibold text-slate-900">{pageContent[language].aboutTitle}</h2>
-        <p>{pageContent[language].aboutBody}</p>
-        <p>{pageContent[language].aboutHelp}</p>
       </section>
 
       <footer className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm sm:px-6">
