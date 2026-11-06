@@ -9,6 +9,9 @@ export type ClothingAdviceData = {
   temperatureMinC: number | null;
   temperatureMaxC: number | null;
   incomplete: boolean;
+  temperatureTrend?: "rising" | "falling" | null;
+  windTrend?: "rising" | "falling" | null;
+  maxWindSpeedKmh?: number | null;
 };
 
 const copy = {

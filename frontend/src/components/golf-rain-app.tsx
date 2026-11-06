@@ -6,6 +6,7 @@ import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-a
 import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
 import type { GolfCourse } from "@/lib/courses";
 import type { Language } from "@/lib/language";
+import { formatRoundPreparation } from "@/lib/round-preparation";
 import { getForecastDateOptions, ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
 type RiskLevel = "low" | "medium" | "high";
@@ -564,7 +565,21 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           ) : (
             <div className="space-y-5">
-              <HourlyWeather language={language} hours={forecast.hours} />
+              <HourlyWeather language={language} hours={forecast.hours} roundContext={
+                <div className="space-y-3 py-2">
+                  <div className="space-y-1 text-xs leading-5 text-slate-500">
+                    <p className="text-sm font-medium break-words text-slate-800">{forecast.course.name}</p>
+                    <p className="flex flex-wrap gap-x-2 tabular-nums">
+                      <span>{forecast.round.start.slice(0, 10)}</span>
+                      <span>{forecast.round.start.slice(11, 16)}–{forecast.round.end.slice(11, 16)} JST · {forecast.round.estimatedDurationHours} h</span>
+                    </p>
+                    <p>{t.fetchedAtLabel}: {formatFetchTime(forecast.source.fetchedAt, language)} JST · {forecast.source.provider}</p>
+                  </div>
+                  <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-sm leading-6 font-medium text-emerald-950">
+                    {formatRoundPreparation(forecast.clothing, language)}
+                  </p>
+                </div>
+              } />
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
@@ -583,14 +598,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                   <div className="mt-2 text-3xl font-semibold">{forecast.round.teeTime}</div>
                   <div className="mt-1 text-sm text-emerald-700">{forecast.round.estimatedDurationHours} h</div>
                 </article>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-                <p className="font-medium text-slate-900">{forecast.course.name}</p>
-                <p>{t.fiveHourWindowLabel}: {forecast.round.start.slice(11, 16)}–{forecast.round.end.slice(11, 16)} JST</p>
-                <p className="mt-2 text-xs text-slate-500">
-                  {t.fetchedAtLabel}: {formatFetchTime(forecast.source.fetchedAt, language)} / {t.sourceLabel}: {forecast.source.provider}
-                </p>
               </div>
 
               <ClothingAdvice language={language} advice={forecast.clothing} />

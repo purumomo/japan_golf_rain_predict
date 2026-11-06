@@ -37,3 +37,27 @@ class ClothingTests(unittest.TestCase):
         self.assertIsNone(advice["temperatureMinC"])
         self.assertEqual(advice["items"], [])
         self.assertEqual(clothing_advice([hour(None, rain=1)])["items"], ["rainJacket", "spareGloves"])
+
+    def test_sustained_round_trends_and_outfit_use_the_same_forecast(self):
+        advice = clothing_advice([hour(14, wind=10), hour(16, wind=14), hour(18, wind=20)])
+        self.assertEqual(advice["temperatureTrend"], "rising")
+        self.assertEqual(advice["windTrend"], "rising")
+        self.assertEqual(advice["maxWindSpeedKmh"], 20)
+        self.assertEqual(advice["items"], ["longSleeve", "windJacket"])
+        falling = clothing_advice([hour(4, wind=20), hour(0, wind=10), hour(-2, wind=0)])
+        self.assertEqual(falling["temperatureTrend"], "falling")
+        self.assertEqual(falling["windTrend"], "falling")
+
+    def test_fluctuating_small_or_missing_changes_do_not_claim_a_trend(self):
+        rounds = [
+            [hour(14, wind=10), hour(13, wind=8), hour(18, wind=20)],
+            [hour(14, wind=10), hour(14.5, wind=11)],
+            [hour(14, wind=10), hour(None, wind=None), hour(18, wind=20)],
+            [hour(14, wind=10)],
+            [],
+        ]
+        for hours in rounds:
+            with self.subTest(hours=hours):
+                advice = clothing_advice(hours)
+                self.assertIsNone(advice["temperatureTrend"])
+                self.assertIsNone(advice["windTrend"])

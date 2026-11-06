@@ -51,6 +51,8 @@ The scene uses separate hourly precipitation types: `rainMm` combines documented
 
 The `clothing` response supplies a packing checklist and the range of available hourly temperatures. These are app guidelines, not provider recommendations or a thermal comfort model: the coldest hourly temperature selects a warm layer below 10°C, long sleeves below 20°C, or a breathable shirt otherwise. Any positive rainfall amount or hourly probability of at least 40% adds a waterproof jacket and spare gloves; an hourly amount of at least 3 mm adds waterproof trousers. Without a rain recommendation, wind of at least 18 km/h adds a windproof layer. Missing weather values are flagged, and missing temperature never defaults to warm conditions. The frontend displays simple garment animations and translates the checklist without making provider calls.
 
+The same response supplies `temperatureTrend`, `windTrend`, and `maxWindSpeedKmh` for a short preparation sentence beside the weather animation. A trend is `rising` or `falling` only when all round values for that metric are present, every step follows the same direction, and the first-to-last change reaches 2°C or 3.6 km/h respectively. Otherwise the trend is null; the UI shows available ranges instead of inventing a trend. This sentence reuses the outfit checklist. Course, play date, round times, and forecast retrieval time appear above it; retrieval time is not the provider's model update time.
+
 ## Checks
 
 ```sh

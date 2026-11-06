@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 import { RoundWeatherScene } from "@/components/round-weather-scene";
 import type { Language } from "@/lib/language";
@@ -58,7 +59,7 @@ const copy = {
   },
 };
 
-export function HourlyWeather({ language, hours }: { language: Language; hours: WeatherHour[] }) {
+export function HourlyWeather({ language, hours, roundContext }: { language: Language; hours: WeatherHour[]; roundContext?: ReactNode }) {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const t = copy[language];
@@ -80,6 +81,7 @@ export function HourlyWeather({ language, hours }: { language: Language; hours: 
   return <section className="@container overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm shadow-emerald-100/40">
     <header className="space-y-1 px-4 pt-4 pb-3">
       <h3 className="text-lg font-semibold text-slate-900">{t.title}</h3>
+      {roundContext}
       <p className="text-xs leading-5 text-slate-500">{t.help}</p>
     </header>
     <div className="relative isolate overflow-hidden bg-emerald-50">
