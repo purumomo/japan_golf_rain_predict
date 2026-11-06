@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import type { Language } from "@/lib/language";
 
 type ClothingItem = "warmLayer" | "longSleeve" | "polo" | "rainJacket" | "windJacket" | "rainPants" | "spareGloves";
@@ -15,7 +13,7 @@ export type ClothingAdviceData = {
 
 const copy = {
   zh: {
-    title: "建议携带的衣物", range: "本轮小时预报气温", replay: "再看一次", empty: "天气数据不足，暂时无法整理衣物建议。",
+    title: "建议携带的衣物", range: "本轮小时预报气温", empty: "天气数据不足，暂时无法整理衣物建议。",
     note: "按本轮气温、降雨和风速整理，怕冷怕热可自行增减。", partial: "部分天气数据缺失，清单可能不完整。",
     items: {
       warmLayer: ["保暖内层", "多带一层，冷了再加"], longSleeve: ["长袖上衣", "方便叠穿和穿脱"],
@@ -25,7 +23,7 @@ const copy = {
     },
   },
   ja: {
-    title: "持っていきたいウェア", range: "ラウンド中の時間別予報気温", replay: "もう一度見る", empty: "ウェアを提案するための天気データが不足しています。",
+    title: "持っていきたいウェア", range: "ラウンド中の時間別予報気温", empty: "ウェアを提案するための天気データが不足しています。",
     note: "気温・雨・風をもとにした持ち物の目安です。暑がり・寒がりに合わせて調整してください。", partial: "一部の天気データがないため、リストが不完全な場合があります。",
     items: {
       warmLayer: ["保温インナー", "寒いときに重ねる一枚"], longSleeve: ["長袖シャツ", "重ね着で調整しやすく"],
@@ -35,7 +33,7 @@ const copy = {
     },
   },
   en: {
-    title: "Clothing to pack", range: "Hourly forecast temperatures for your round", replay: "Replay", empty: "Not enough weather data for a clothing checklist yet.",
+    title: "Clothing to pack", range: "Hourly forecast temperatures for your round", empty: "Not enough weather data for a clothing checklist yet.",
     note: "A packing guide based on temperature, rain and wind. Adjust for how warm or cold you tend to feel.", partial: "Some weather data is missing, so the list may be incomplete.",
     items: {
       warmLayer: ["Warm base layer", "An extra layer for the cold"], longSleeve: ["Long-sleeve top", "Easy to layer and remove"],
@@ -71,16 +69,14 @@ function Garment({ item }: { item: ClothingItem }) {
 }
 
 export function ClothingAdvice({ language, advice }: { language: Language; advice?: ClothingAdviceData | null }) {
-  const [replay, setReplay] = useState(0);
   const t = copy[language];
   return (
     <section className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-semibold text-slate-900">{t.title}</h3>
-        {advice?.items.length ? <button type="button" onClick={() => setReplay(replay + 1)} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700">{t.replay}</button> : null}
       </div>
       {advice?.temperatureMinC != null && advice.temperatureMaxC != null ? <p className="mt-2 text-xs text-slate-600">{t.range}: <strong className="tabular-nums">{advice.temperatureMinC}–{advice.temperatureMaxC} °C</strong></p> : null}
-      {advice?.items.length ? <ul key={replay} className="mt-3 grid grid-cols-2 gap-3">
+      {advice?.items.length ? <ul className="mt-3 grid grid-cols-2 gap-3">
         {advice.items.map((item) => <li key={item} className="rounded-xl bg-white p-3 text-center">
           <Garment item={item} />
           <p className="text-sm font-semibold text-slate-900">{t.items[item][0]}</p>

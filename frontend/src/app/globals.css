@@ -80,7 +80,7 @@ select {
 .packing-garment {
   transform-box: fill-box;
   transform-origin: center;
-  animation: pack-clothing 1.6s ease-in-out 2;
+  animation: pack-clothing 1.6s ease-in-out infinite;
 }
 
 @keyframes pack-clothing {
