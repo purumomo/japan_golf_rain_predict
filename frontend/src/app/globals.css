@@ -77,19 +77,35 @@ select {
   }
 }
 
-.packing-garment {
+.outfit-person {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: pack-clothing 1.6s ease-in-out infinite;
+  transform-origin: center bottom;
+  animation: outfit-breathe 3s ease-in-out infinite;
 }
 
-@keyframes pack-clothing {
+.outfit-arm {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: outfit-arm-swing 3s ease-in-out infinite;
+}
+
+.outfit-arm-right {
+  animation-direction: reverse;
+}
+
+@keyframes outfit-breathe {
   0%, 100% { transform: translateY(0) rotate(0); }
-  50% { transform: translateY(-5px) rotate(3deg); }
+  50% { transform: translateY(-2px) rotate(0.5deg); }
+}
+
+@keyframes outfit-arm-swing {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .packing-garment {
+  .outfit-person,
+  .outfit-arm {
     animation: none;
   }
 }
