@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-advice";
 import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
 import type { GolfCourse } from "@/lib/courses";
 import type { Language } from "@/lib/language";
 import { formatRoundPreparation } from "@/lib/round-preparation";
+import { getSavedCourseSnapshot, getServerCourseSnapshot, parseSavedCourse, rememberCourse, subscribeSavedCourse } from "@/lib/saved-course";
 import { getForecastDateOptions, ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
 type RiskLevel = "low" | "medium" | "high";
@@ -281,12 +282,20 @@ function buildTeeTimeOptions() {
 }
 
 const teeTimeOptions = buildTeeTimeOptions();
+const savedCourseCopy = {
+  zh: { remembered: "已记住此球场，下次访问会自动带入。", forget: "清除记忆" },
+  ja: { remembered: "このコースをブラウザーに保存しました。次回も自動で表示します。", forget: "保存を解除" },
+  en: { remembered: "Remembered in this browser for your next visit.", forget: "Forget course" },
+};
 
 export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const language = initialLanguage;
-  const [query, setQuery] = useState("");
+  const savedCourse = parseSavedCourse(useSyncExternalStore(subscribeSavedCourse, getSavedCourseSnapshot, getServerCourseSnapshot));
+  const [editedQuery, setQuery] = useState<string | null>(null);
+  const query = editedQuery ?? savedCourse?.name ?? "";
   const [courses, setCourses] = useState<GolfCourse[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<GolfCourse | null>(null);
+  const [courseSelection, setSelectedCourse] = useState<GolfCourse | null | undefined>(undefined);
+  const selectedCourse = courseSelection === undefined ? savedCourse : courseSelection;
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -467,7 +476,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                     type="button"
                     disabled={isLoading}
                     aria-pressed={isSelected}
-                    onClick={() => { setSelectedCourse(course); setForecast(null); setErrorMessage(null); }}
+                    onClick={() => { setSelectedCourse(course); rememberCourse(course); setForecast(null); setErrorMessage(null); }}
                     className={`rounded-2xl border px-4 py-3 text-left transition ${
                       isSelected
                         ? "border-sky-500 bg-sky-50 shadow-sm"
@@ -496,6 +505,11 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
               <a href={selectedCourse.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block underline">
                 OpenStreetMap ↗ ({selectedCourse.latitude.toFixed(5)}, {selectedCourse.longitude.toFixed(5)})
               </a>
+              {savedCourse?.id === selectedCourse.id ? <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 text-xs text-sky-800">
+                <p>{savedCourseCopy[language].remembered}</p>
+                <button type="button" disabled={isLoading} onClick={() => { setSelectedCourse(selectedCourse); setQuery(query); rememberCourse(null); }}
+                  className="min-h-11 underline underline-offset-4 disabled:opacity-50">{savedCourseCopy[language].forget}</button>
+              </div> : null}
             </div>
           ) : null}
 

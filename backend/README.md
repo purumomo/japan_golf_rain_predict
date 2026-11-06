@@ -55,6 +55,8 @@ The same response supplies `temperatureTrend`, `windTrend`, and `maxWindSpeedKmh
 
 ## Checks
 
+Hourly `highlights` are presentation hints calculated only from the selected round. A single coldest-time hint requires complete temperature data, a minimum below 20°C, and a round range of at least 2°C. A single wind-increase hint requires at least 18 km/h and a rise of at least 7.2 km/h over an earlier minimum, without bridging missing wind values. Rain/snow hints mark the first hour of a precipitation episode or a change in precipitation type, using source amounts, weather codes, or hourly probability of at least 40%. Probability alone does not determine precipitation type. Each card shows at most two hints. These are app display rules, not provider alerts or playability decisions.
+
 ```sh
 .venv/bin/ruff check .
 .venv/bin/python -m unittest discover -s tests -v

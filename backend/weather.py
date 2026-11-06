@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from clothing import clothing_advice
 from courses import is_number
+from hourly_highlights import highlight_hours
 from http_client import ApiError, fetch_json
 from tee_window import select_overlapping_hours, summarize_risk
 
@@ -68,7 +69,7 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
             "isDay": bool(daylight) if daylight in (0, 1) else None,
         })
     try:
-        hours = select_overlapping_hours(entries, date, tee_time)
+        hours = highlight_hours(select_overlapping_hours(entries, date, tee_time))
     except (ValueError, TypeError) as error:
         raise ApiError(502, "Invalid forecast timestamps.") from error
     return {"hours": hours, "summary": summarize_risk(hours), "clothing": clothing_advice(hours)}

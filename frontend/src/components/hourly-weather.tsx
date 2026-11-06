@@ -24,6 +24,7 @@ export type WeatherHour = {
   weatherCode: number | null;
   cloudCoverPct: number | null;
   isDay: boolean | null;
+  highlights?: ("coldest" | "windIncreasing" | "rainPossible" | "snowPossible" | "precipitationPossible")[];
 };
 
 const copy = {
@@ -32,6 +33,7 @@ const copy = {
     rain: "降水量", chance: "雨雪可能性", temperature: "气温", wind: "风速", snow: "降雪量",
     dry: "预报降水量为 0", wet: "预计有降水", raining: "预计有雨", snowing: "预计有雪", mixed: "预计雨雪混合", missing: "降水数据缺失", empty: "暂无这个时段的预报。",
     pause: "暂停动画", play: "播放动画", timeline: "切换打球时段",
+    highlights: { coldest: "本轮最冷", windIncreasing: "风明显变大", rainPossible: "可能有雨", snowPossible: "可能有雪", precipitationPossible: "可能有雨雪" },
     details: "预报数据与时间", source: "降水预报时段", instant: "气温、风速对应时刻",
     visualNote: "这是预报场景示意，不是球场实景。树木和风线表示风速，不表示现场风向。降水量包含雨和雪折合的水量；降雪量单独以厘米显示，不代表地面积雪厚度。",
     partial: (minutes: number) => `这个小时内打球 ${minutes} 分钟；降水量仍显示整小时预报。`,
@@ -42,6 +44,7 @@ const copy = {
     rain: "降水量", chance: "降水確率", temperature: "気温", wind: "風速", snow: "降雪量",
     dry: "予報降水量は 0", wet: "降水の予報あり", raining: "雨の予報", snowing: "雪の予報", mixed: "雨と雪の予報", missing: "降水データなし", empty: "この時間帯の予報はありません。",
     pause: "アニメーションを停止", play: "アニメーションを再生", timeline: "プレー時間を切り替え",
+    highlights: { coldest: "ラウンド中の最低気温", windIncreasing: "風が強まる", rainPossible: "雨の可能性", snowPossible: "雪の可能性", precipitationPossible: "雨・雪の可能性" },
     details: "予報データと時刻", source: "降水の予報時間帯", instant: "気温・風速の予報時刻",
     visualNote: "予報のイメージであり、現地の映像ではありません。木や風の線は風速を表し、実際の風向きは示しません。降水量は雪を水に換算した量も含みます。降雪量はcmで表示し、積雪の深さではありません。",
     partial: (minutes: number) => `この1時間内のプレーは${minutes}分です。雨量は1時間分の予報です。`,
@@ -52,6 +55,7 @@ const copy = {
     rain: "Precipitation", chance: "Rain / snow chance", temperature: "Temperature", wind: "Wind speed", snow: "Snowfall",
     dry: "0 precipitation forecast", wet: "Precipitation forecast", raining: "Rain forecast", snowing: "Snow forecast", mixed: "Rain and snow forecast", missing: "Precipitation data missing", empty: "No forecast for this time.",
     pause: "Pause animation", play: "Play animation", timeline: "Choose a playing time",
+    highlights: { coldest: "Coldest this round", windIncreasing: "Wind picks up", rainPossible: "Rain possible", snowPossible: "Snow possible", precipitationPossible: "Rain / snow possible" },
     details: "Forecast data and times", source: "Precipitation forecast period", instant: "Temperature and wind valid at",
     visualNote: "A forecast illustration, not live footage. Trees and wind streaks show speed, not actual direction. Precipitation includes the water equivalent of snow. Snowfall is shown in cm and is not snow depth.",
     partial: (minutes: number) => `You play for ${minutes} minutes in this hour; rainfall is the full hourly forecast.`,
@@ -114,6 +118,9 @@ export function HourlyWeather({ language, hours, roundContext }: { language: Lan
           <span className="text-sm font-semibold">{hour.temperatureC ?? "—"}°C</span>
           <span className="text-[10px] opacity-80">{(hour.snowfallCm ?? 0) > 0 ? `${t.snow} ${hour.snowfallCm} cm` : `${t.rain} ${hour.precipitationMm ?? "—"} mm`}</span>
         </span>
+        {hour.highlights?.length ? <span className="mt-2 flex flex-wrap gap-1">
+          {hour.highlights.map((highlight) => <span key={highlight} className={`rounded-md px-1.5 py-1 text-[10px] leading-4 ${selected.time === hour.time ? "bg-white/15 text-white" : "bg-amber-50 text-amber-900"}`}>{t.highlights[highlight]}</span>)}
+        </span> : null}
         {hour.precipitationProbability !== null ? <span aria-hidden="true" className={`mt-2 block h-1 overflow-hidden rounded-full ${selected.time === hour.time ? "bg-emerald-600" : "bg-slate-100"}`}>
           <span className={`block h-full rounded-full ${selected.time === hour.time ? "bg-white" : "bg-sky-500"}`} style={{ width: `${hour.precipitationProbability}%` }} />
         </span> : null}
