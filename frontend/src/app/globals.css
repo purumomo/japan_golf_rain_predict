@@ -48,6 +48,33 @@ select {
   font: inherit;
 }
 
+.round-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  height: 3rem;
+  background-color: #fff;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.round-input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+
+.round-input::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: left;
+}
+
+.round-input::-webkit-datetime-edit {
+  padding: 0;
+}
+
 ::selection {
   background: rgba(31, 111, 235, 0.2);
 }

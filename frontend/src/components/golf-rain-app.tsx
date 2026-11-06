@@ -413,7 +413,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="space-y-2">
             <label htmlFor="course-search" className="text-sm font-medium text-slate-800">
               {t.searchLabel}
@@ -497,9 +497,9 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="play-date" className="text-sm font-medium text-slate-800">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <label htmlFor="play-date" className="block text-sm font-medium text-slate-800">
                 {t.playDateLabel}
               </label>
               <input
@@ -510,11 +510,11 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 min={bounds.minDate}
                 max={bounds.maxDate}
                 onChange={(event) => { setSelectedDate(event.target.value); setForecast(null); setErrorMessage(null); }}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+                className="round-input rounded-2xl border border-slate-300 px-4 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="tee-time" className="text-sm font-medium text-slate-800">
+            <div className="min-w-0 space-y-2">
+              <label htmlFor="tee-time" className="block text-sm font-medium text-slate-800">
                 {t.teeTimeLabel}
               </label>
               <select
@@ -522,7 +522,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 disabled={isLoading}
                 value={teeTime}
                 onChange={(event) => { setTeeTime(event.target.value); setForecast(null); setErrorMessage(null); }}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+                className="round-input rounded-2xl border border-slate-300 px-4 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               >
                 {teeTimeOptions.map((option) => (
                   <option key={option} value={option}>
