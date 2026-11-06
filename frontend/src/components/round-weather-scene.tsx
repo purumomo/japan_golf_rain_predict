@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 
-type SceneWeather = {
+import { getWeatherAppearance, type WeatherAppearanceData } from "@/lib/weather-appearance";
+
+type SceneWeather = WeatherAppearanceData & {
   temperatureC: number | null;
   windSpeedKmh: number | null;
   precipitationMm: number | null;
-  rainMm: number | null;
-  snowfallCm: number | null;
 };
 
 function CourseTree({ x, y, scale, wind }: { x: number; y: number; scale: number; wind: number | null }) {
@@ -28,13 +28,38 @@ export function RoundWeatherScene({ weather, paused }: { weather: SceneWeather; 
   const windDuration = `${Math.max(0.6, 3.5 / (1 + (wind ?? 0) / 3))}s`;
   const rain = weather.rainMm ?? 0;
   const snow = weather.snowfallCm ?? 0;
-  const drops = rain <= 0 ? 0 : rain < 1 ? 10 : rain < 3 ? 22 : rain < 10 ? 36 : 52;
-  const flakes = snow <= 0 ? 0 : snow < 1 ? 18 : snow < 3 ? 32 : 48;
+  const appearance = getWeatherAppearance(weather);
+  const drops = !appearance.rain ? 0 : rain < 1 ? 10 : rain < 3 ? 22 : rain < 10 ? 36 : 52;
+  const flakes = !appearance.snow ? 0 : snow < 1 ? 18 : snow < 3 ? 32 : 48;
   const cool = weather.temperatureC !== null && weather.temperatureC < 10;
   const warm = weather.temperatureC !== null && weather.temperatureC >= 25;
+  const night = weather.isDay === false;
+  const sky = night ? "#273d51" : appearance.storm ? "#b4c3ce" : appearance.kind === "overcast" || appearance.kind === "fog" ? "#d7e0e3"
+    : appearance.rain || appearance.snow || cool ? "#dce7ed" : warm ? "#fff0d1" : "#e6f2ee";
 
   return <svg viewBox="0 0 600 340" className={`round-weather-scene block w-full ${paused ? "round-scene-paused" : ""}`} aria-hidden="true">
-    <rect width="600" height="340" fill={snow > 0 || cool ? "#dce7ed" : warm ? "#f3eddb" : "#e6efe7"} />
+    <rect width="600" height="340" fill={sky} />
+    {appearance.sun ? <g transform="translate(468 66)">
+      <circle className="round-scene-sun-glow" r="47" fill="#f8df98" opacity="0.5" />
+      <g className="round-scene-sun-rays" stroke="#eec36a" strokeWidth="3" strokeLinecap="round">
+        {Array.from({ length: 12 }, (_, index) => <path key={index} d="M0 -36 V-43" transform={`rotate(${index * 30})`} />)}
+      </g>
+      <circle r="28" fill="#f4c75f" />
+      <circle cx="-8" cy="-8" r="15" fill="#f9d77f" opacity="0.55" />
+    </g> : null}
+    {appearance.moon ? <g className="round-scene-moon" fill="#f3f3cf">
+      <path d="M465 34 A31 31 0 1 0 487 78 A27 27 0 0 1 465 34Z" />
+      <circle cx="310" cy="37" r="1.5" /><circle cx="378" cy="70" r="2" /><circle cx="550" cy="44" r="1.5" />
+    </g> : null}
+    {[
+      [126, 70, 0.82], [415, 91, 1.15], [289, 31, 0.87], [555, 125, 0.9],
+    ].slice(0, appearance.cloudCount).map(([x, y, scale], index) => <g key={index} transform={`translate(${x} ${y}) scale(${scale})`}>
+      <g className="round-scene-cloud" style={{ animationDuration: `${Math.max(5, 18 - (wind ?? 0))}s`, animationDelay: `${-index * 4}s` }}>
+        <path d="M-49 12 Q-67 12 -63 -5 Q-60 -19 -43 -18 Q-45 -40 -23 -44 Q0 -49 10 -28 Q32 -35 41 -17 Q62 -19 64 -2 Q68 14 46 15Z" fill={night ? "#738694" : appearance.rain || appearance.storm ? "#9aaeb8" : "#fffdf4"} />
+        <path d="M-48 12 H46" stroke={night ? "#8e9da5" : "#d1dcdd"} strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+      </g>
+    </g>)}
+    {appearance.storm ? <path className="round-scene-lightning" d="M422 100 L405 127 H420 L410 150 L441 116 H426 L439 100Z" fill="#f6dc85" /> : null}
     <path d="M0 130 Q100 100 207 129 T426 114 T600 123 V340 H0Z" fill="#c7d8c2" />
     <path d="M0 173 Q100 114 230 156 T450 135 T600 159 V340 H0Z" fill="#9dbb98" />
     <path d="M0 236 Q160 153 300 206 T600 185 V340 H0Z" fill="#739c78" />
@@ -102,6 +127,10 @@ export function RoundWeatherScene({ weather, paused }: { weather: SceneWeather; 
         </g>
       </g>)}
     </g>
+    {appearance.kind === "fog" ? <g className="round-scene-fog" fill="none" stroke="#f4f6ef" strokeWidth="13" strokeLinecap="round" opacity="0.45">
+      <path d="M-30 150 H390 M210 180 H640 M-30 215 H510" />
+    </g> : null}
+    {night ? <rect width="600" height="340" fill="#1d3549" opacity="0.15" /> : null}
     <path d="M29 327 L35 319 M36 329 L45 319 M559 303 L565 292 M566 306 L575 296" stroke="#c1d49e" strokeWidth="2" strokeLinecap="round" />
   </svg>;
 }

@@ -6,6 +6,9 @@ from courses import is_number
 from http_client import ApiError, fetch_json
 from tee_window import select_overlapping_hours, summarize_risk
 
+WEATHER_CODES = {0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86,
+                 95, 96, 99}
+
 
 def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
     end_date = (calendar_date.fromisoformat(date) + timedelta(days=1)).isoformat()
@@ -14,7 +17,10 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
         {
             "latitude": course["latitude"],
             "longitude": course["longitude"],
-            "hourly": "precipitation_probability,precipitation,wind_speed_10m,temperature_2m,rain,showers,snowfall",
+            "hourly": (
+                "precipitation_probability,precipitation,wind_speed_10m,temperature_2m,"
+                "rain,showers,snowfall,weather_code,cloud_cover,is_day"
+            ),
             "timezone": "Asia/Tokyo",
             "wind_speed_unit": "kmh",
             "precipitation_unit": "mm",
@@ -47,6 +53,8 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
     for index, timestamp in enumerate(times):
         rain = value_at("rain", index)
         showers = value_at("showers", index)
+        code = value_at("weather_code", index)
+        daylight = value_at("is_day", index, 1)
         entries.append({
             "time": timestamp,
             "precipitationProbability": value_at("precipitation_probability", index, 100),
@@ -55,6 +63,9 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
             "temperatureC": value_at("temperature_2m", index, minimum=None),
             "rainMm": round(rain + showers, 3) if rain is not None and showers is not None else None,
             "snowfallCm": value_at("snowfall", index),
+            "weatherCode": int(code) if code in WEATHER_CODES else None,
+            "cloudCoverPct": value_at("cloud_cover", index, 100),
+            "isDay": bool(daylight) if daylight in (0, 1) else None,
         })
     try:
         hours = select_overlapping_hours(entries, date, tee_time)

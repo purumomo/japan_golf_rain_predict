@@ -77,6 +77,49 @@ select {
   animation: round-walk-bob 1.8s ease-in-out infinite;
 }
 
+.round-scene-sun-glow {
+  transform-origin: 0 0;
+  animation: round-sun-glow 5s ease-in-out infinite alternate;
+}
+
+.round-scene-sun-rays {
+  transform-origin: 0 0;
+  animation: round-sun-rays 45s linear infinite;
+}
+
+.round-scene-cloud,
+.round-scene-fog {
+  animation: round-cloud-drift 14s ease-in-out infinite alternate;
+}
+
+.round-scene-moon {
+  animation: round-cloud-drift 12s ease-in-out infinite alternate;
+}
+
+.round-scene-lightning {
+  animation: round-lightning-glow 5s ease-in-out infinite alternate;
+}
+
+@keyframes round-sun-glow {
+  from { transform: scale(0.95); opacity: 0.4; }
+  to { transform: scale(1.08); opacity: 0.65; }
+}
+
+@keyframes round-sun-rays {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes round-cloud-drift {
+  from { transform: translateX(-12px); }
+  to { transform: translateX(12px); }
+}
+
+@keyframes round-lightning-glow {
+  from { opacity: 0.35; }
+  to { opacity: 0.9; }
+}
+
 .round-scene-leg,
 .round-scene-arm {
   transform-origin: 0 0;

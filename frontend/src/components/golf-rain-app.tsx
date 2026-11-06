@@ -554,11 +554,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
         </form>
 
         <section className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-slate-900">{t.summaryTitle}</h2>
-            <p className="text-sm leading-6 text-slate-600">{t.summaryBody}</p>
-          </div>
-
           {!forecast ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               {t.emptyState}

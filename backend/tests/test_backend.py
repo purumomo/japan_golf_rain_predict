@@ -363,6 +363,22 @@ class ApiTests(unittest.TestCase):
 
 
 class WeatherTests(unittest.TestCase):
+    def test_weather_codes_cloud_cover_and_daylight_preserve_zero_and_missing(self):
+        payload = {"hourly": {
+            "time": [f"2026-11-09T{hour:02d}:00" for hour in range(9, 15)],
+            "weather_code": [0, 2, 61, 71, 999, None],
+            "cloud_cover": [0, 50, 100, None, -1, 101],
+            "is_day": [0, 1, None, True, 0.5, 2],
+        }}
+        get_json = Mock(return_value=payload)
+        result = fetch_forecast_window(COURSE, "2026-11-09", "08:30", get_json)
+        self.assertEqual([hour["weatherCode"] for hour in result["hours"]], [0, 2, 61, 71, None, None])
+        self.assertEqual([hour["cloudCoverPct"] for hour in result["hours"]], [0, 50, 100, None, None, None])
+        self.assertEqual([hour["isDay"] for hour in result["hours"]], [False, True, None, None, None, None])
+        self.assertTrue({"weather_code", "cloud_cover", "is_day"}.issubset(
+            get_json.call_args.args[1]["hourly"].split(",")
+        ))
+
     def test_rain_and_snow_are_separate_with_missing_data_preserved(self):
         payload = {"hourly": {
             "time": [f"2026-11-09T{hour:02d}:00" for hour in range(9, 15)],

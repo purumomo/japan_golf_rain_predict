@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { RoundWeatherScene } from "@/components/round-weather-scene";
 import type { Language } from "@/lib/language";
+import { getWeatherAppearance } from "@/lib/weather-appearance";
 
 export type WeatherHour = {
   time: string;
@@ -19,6 +20,9 @@ export type WeatherHour = {
   snowfallCm: number | null;
   temperatureC: number | null;
   windSpeedKmh: number | null;
+  weatherCode: number | null;
+  cloudCoverPct: number | null;
+  isDay: boolean | null;
 };
 
 const copy = {
@@ -30,6 +34,7 @@ const copy = {
     details: "预报数据与时间", source: "降水预报时段", instant: "气温、风速对应时刻",
     visualNote: "这是预报场景示意，不是球场实景。树木和风线表示风速，不表示现场风向。降水量包含雨和雪折合的水量；降雪量单独以厘米显示，不代表地面积雪厚度。",
     partial: (minutes: number) => `这个小时内打球 ${minutes} 分钟；降水量仍显示整小时预报。`,
+    conditions: { clear: "晴", mostlyClear: "晴间少云", partlyCloudy: "多云", overcast: "阴天", fog: "有雾", drizzle: "毛毛雨", rain: "有雨", snow: "有雪", mixed: "雨雪混合", storm: "雷雨", unknown: "天气状态待更新" },
   },
   ja: {
     title: "プレー中の天気", help: "時間を切り替えて、ラウンド中の天気の変化を見てみましょう。", scene: "コースの天気イメージ",
@@ -39,6 +44,7 @@ const copy = {
     details: "予報データと時刻", source: "降水の予報時間帯", instant: "気温・風速の予報時刻",
     visualNote: "予報のイメージであり、現地の映像ではありません。木や風の線は風速を表し、実際の風向きは示しません。降水量は雪を水に換算した量も含みます。降雪量はcmで表示し、積雪の深さではありません。",
     partial: (minutes: number) => `この1時間内のプレーは${minutes}分です。雨量は1時間分の予報です。`,
+    conditions: { clear: "快晴", mostlyClear: "晴れ", partlyCloudy: "晴れ時々曇り", overcast: "曇り", fog: "霧", drizzle: "霧雨", rain: "雨", snow: "雪", mixed: "雨と雪", storm: "雷雨", unknown: "天気データなし" },
   },
   en: {
     title: "Weather during your round", help: "Choose a time to see how the weather changes through your round.", scene: "Illustrated course weather",
@@ -48,6 +54,7 @@ const copy = {
     details: "Forecast data and times", source: "Precipitation forecast period", instant: "Temperature and wind valid at",
     visualNote: "A forecast illustration, not live footage. Trees and wind streaks show speed, not actual direction. Precipitation includes the water equivalent of snow. Snowfall is shown in cm and is not snow depth.",
     partial: (minutes: number) => `You play for ${minutes} minutes in this hour; rainfall is the full hourly forecast.`,
+    conditions: { clear: "Clear", mostlyClear: "Mainly clear", partlyCloudy: "Partly cloudy", overcast: "Overcast", fog: "Fog", drizzle: "Drizzle", rain: "Rain", snow: "Snow", mixed: "Rain and snow", storm: "Thunderstorm", unknown: "Weather data unavailable" },
   },
 };
 
@@ -60,8 +67,9 @@ export function HourlyWeather({ language, hours }: { language: Language; hours: 
   const wet = (selected.precipitationMm ?? 0) > 0;
   const snowing = (selected.snowfallCm ?? 0) > 0;
   const raining = (selected.rainMm ?? 0) > 0;
-  const condition = snowing ? (raining ? t.mixed : t.snowing) : raining ? t.raining
-    : selected.precipitationMm == null ? t.missing : wet ? t.wet : t.dry;
+  const appearance = getWeatherAppearance(selected);
+  const condition = appearance.kind === "unknown" ? (selected.precipitationMm == null ? t.missing : wet ? t.wet : t.conditions.unknown)
+    : t.conditions[appearance.kind];
   const metrics = [
     { label: t.temperature, value: selected.temperatureC, unit: "°C" },
     { label: t.wind, value: selected.windSpeedKmh == null ? null : (selected.windSpeedKmh / 3.6).toFixed(1), unit: "m/s" },
