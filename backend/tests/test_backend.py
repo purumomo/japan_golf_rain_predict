@@ -362,6 +362,7 @@ class WeatherTests(unittest.TestCase):
                     "time": [f"2026-11-09T{hour:02d}:00" for hour in range(9, 15)],
                     "precipitation_probability": [10, 20, 30, 40, 50, 60],
                     "precipitation": [0, 0, 0.2, 0.3, 0.4, 0.5],
+                    "temperature_2m": [-2.5, 0, 8, None, True, "12"],
                 }
             }
         )
@@ -373,6 +374,19 @@ class WeatherTests(unittest.TestCase):
         self.assertEqual((params["latitude"], params["longitude"]), (35.8, 140.3))
         self.assertEqual(params["timezone"], "Asia/Tokyo")
         self.assertEqual(params["end_date"], "2026-11-10")
+        self.assertIn("temperature_2m", params["hourly"].split(","))
+        self.assertEqual(params["temperature_unit"], "celsius")
+        self.assertEqual([hour["temperatureC"] for hour in result["hours"]], [-2.5, 0, 8, None, None, None])
+        self.assertEqual(result["clothing"]["temperatureMinC"], -2.5)
+
+    def test_missing_and_nonfinite_temperatures_are_not_zero(self):
+        payload = {"hourly": {
+            "time": [f"2026-11-09T{hour:02d}:00" for hour in range(9, 15)],
+            "temperature_2m": [float("nan"), float("inf"), -float("inf")],
+        }}
+        result = fetch_forecast_window(COURSE, "2026-11-09", "08:30", lambda *_: payload)
+        self.assertTrue(all(hour["temperatureC"] is None for hour in result["hours"]))
+        self.assertIsNone(result["clothing"]["temperatureMinC"])
 
     def test_empty_and_malformed_responses(self):
         self.assertEqual(fetch_forecast_window(COURSE, "2026-11-09", "08:30", lambda *_: {})["hours"], [])

@@ -43,6 +43,10 @@ Caching and throttling are in memory per Flask worker: five-minute cache, at mos
 
 Open-Meteo precipitation bins refer to the preceding hour. Half-hour tee times include both boundary bins. Rainfall totals preserve the full hourly source values for overlapping bins, so boundary-hour rainfall is an approximation rather than an exact five-hour accumulation; wind is the source's instantaneous hourly value. The maximum hourly probability is never a whole-round rain probability.
 
+Hourly forecasts also include `temperatureC` from Open-Meteo's `temperature_2m`, explicitly requested in Celsius. Negative and zero temperatures are valid; absent or invalid values remain null. Temperature and wind correspond to the bucket end timestamp, while precipitation describes the preceding hour.
+
+The `clothing` response supplies a packing checklist and the range of available hourly temperatures. These are app guidelines, not provider recommendations or a thermal comfort model: the coldest hourly temperature selects a warm layer below 10°C, long sleeves below 20°C, or a breathable shirt otherwise. Any positive rainfall amount or hourly probability of at least 40% adds a waterproof jacket and spare gloves; an hourly amount of at least 3 mm adds waterproof trousers. Without a rain recommendation, wind of at least 18 km/h adds a windproof layer. Missing weather values are flagged, and missing temperature never defaults to warm conditions. The frontend displays simple garment animations and translates the checklist without making provider calls.
+
 ## Checks
 
 ```sh

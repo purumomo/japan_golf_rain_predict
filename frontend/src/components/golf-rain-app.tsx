@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-advice";
+import { RainImpact } from "@/components/rain-impact";
 import type { GolfCourse } from "@/lib/courses";
+import type { Language } from "@/lib/language";
+import { pageContent } from "@/lib/page-content";
 import { ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
-type Language = "ja" | "zh" | "en";
 type RiskLevel = "low" | "medium" | "high";
 
 type ForecastResponse = {
@@ -40,8 +43,10 @@ type ForecastResponse = {
     precipitationProbability: number | null;
     precipitationMm: number | null;
     windSpeedKmh: number | null;
+    temperatureC: number | null;
   }>;
   missingForecast: boolean;
+  clothing?: ClothingAdviceData | null;
 };
 
 type GolfRainAppProps = {
@@ -53,8 +58,6 @@ type GolfRainAppProps = {
 };
 
 type TranslationSet = {
-  langLabel: string;
-  productBadge: string;
   heroTitle: string;
   heroBody: string;
   timezoneLabel: string;
@@ -92,11 +95,13 @@ type TranslationSet = {
   fetchedAtLabel: string;
   sourceLabel: string;
   timelineTitle: string;
+  timelineHelp: string;
   partialOverlapLabel: (minutes: number) => string;
   fullOverlapLabel: string;
   probabilityLabel: string;
   precipitationLabel: string;
   windLabel: string;
+  temperatureLabel: string;
   footerSource: string;
   footerCourseData: string;
   footerWarning: string;
@@ -107,8 +112,6 @@ type TranslationSet = {
 
 const translations: Record<Language, TranslationSet> = {
   ja: {
-    langLabel: "表示言語",
-    productBadge: "Golf Rain MVP",
     heroTitle: "空を読んで、ナイスショット。",
     heroBody:
       "ゴルフ場とプレー日、スタート時間を選ぶと、約5時間のラウンド中の降水確率・降水量・風速を1時間ごとに確認できます。",
@@ -128,17 +131,17 @@ const translations: Record<Language, TranslationSet> = {
     playDateLabel: "プレー日",
     teeTimeLabel: "スタート時間",
     roundEstimateLabel: (hours) => `ラウンド時間の目安：スタートから${hours}時間`,
-    unitsLabel: "表示内容：1時間ごとの降水確率・降水量・地上10mの風速",
+    unitsLabel: "表示内容：1時間ごとの気温（°C）・降水確率・降水量・地上10mの風速（m/s）",
     submitIdle: "雨リスクを確認する",
     submitLoading: "予報を取得中...",
     dateRangeError: (minDate, maxDate) => `${minDate}から${maxDate}までの日付を選んでください。`,
     fetchError: "天気予報の取得に失敗しました。少し待ってから再試行してください。",
     networkError: "通信エラーが発生しました。ネットワーク接続を確認してください。",
     summaryTitle: "ラウンド中の天気予報",
-    summaryBody: "ラウンド中の各時間帯のうち、最も高い降水確率を表示しています。5時間のラウンド全体で雨が降る確率を表すものではありません。",
+    summaryBody: "雨が降りやすい時間と雨量を見て、持ち物を準備しましょう。",
     emptyState: "ゴルフ場・プレー日・スタート時間を選ぶと、ここにスタートから5時間分の予報が表示されます。",
     missingForecast: "選択した時間帯の予報が見つかりませんでした。日付かスタート時間を変えて再試行してください。",
-    maxHourlyProbabilityLabel: "時間ごとの降水確率の最大値",
+    maxHourlyProbabilityLabel: "最も雨が降りやすい1時間",
     rainfallTotalLabel: "累積降水量",
     startTimeCardLabel: "スタート時間",
     riskLabelPrefix: "雨のリスク",
@@ -146,12 +149,14 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "取得時刻",
     fetchedAtLabel: "取得時刻",
     sourceLabel: "予報の提供元",
-    timelineTitle: "時間別タイムライン",
+    timelineTitle: "プレー中の天気",
+    timelineHelp: "棒が長いほど、その1時間の雨量が多い予報です。時間を押すと、上のアニメーションが切り替わります。",
     partialOverlapLabel: (minutes) => `ラウンドと ${minutes} 分だけ重なる時間帯`,
     fullOverlapLabel: "ラウンドと 60 分重なる時間帯",
     probabilityLabel: "降水確率",
     precipitationLabel: "降水量",
     windLabel: "風速",
+    temperatureLabel: "気温",
     footerSource: "天気予報の提供元：Open-Meteo Forecast API / 時刻はすべて日本標準時（JST）で表示しています。",
     footerCourseData: "ゴルフ場検索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地図上の名称や位置が最新でない場合があります。",
     footerWarning: "注意: 予報はモデル出力であり、実測や的中保証ではありません。独自のラウンド全体降水確率は表示していません。",
@@ -162,13 +167,12 @@ const translations: Record<Language, TranslationSet> = {
       high: "雨を見込んだ準備が必要そうです。スタート前後の時間帯は特に確認してください。",
     },
     sourceNotes: [
+      "気温と風速は各時間帯の終了時刻の予報値です。気温は体感温度ではありません。",
       "Open-Meteo の時間別降水確率は、各 1 時間区間の予報値です。ラウンド全体の降雨確率ではありません。",
       "30 分刻みのスタート時刻では、最初と最後の時間帯が 5 時間ラウンドと部分的に重なります。",
     ],
   },
   zh: {
-    langLabel: "显示语言",
-    productBadge: "Golf Rain MVP",
     heroTitle: "看准天气，挥出好球。",
     heroBody:
       "搜索并选择日本的真实球场、出发日期和开球时间后，即可查看按 5 小时一轮估算的逐小时降水概率、降水量和风速。",
@@ -188,17 +192,17 @@ const translations: Record<Language, TranslationSet> = {
     playDateLabel: "打球日期",
     teeTimeLabel: "开球时间",
     roundEstimateLabel: (hours) => `回合估算：从开球起 ${hours} 小时`,
-    unitsLabel: "显示内容：逐小时降水概率、降水量、10m 风速",
+    unitsLabel: "显示内容：逐小时气温（°C）、下雨可能性、雨量、10m 风速（m/s）",
     submitIdle: "查看降雨风险",
     submitLoading: "正在获取预报...",
     dateRangeError: (minDate, maxDate) => `支持的日期范围为 ${minDate} 到 ${maxDate}。`,
     fetchError: "天气预报获取失败，请稍后重试。",
     networkError: "发生网络错误，请检查连接。",
     summaryTitle: "预报摘要",
-    summaryBody: "这里显示的是“最高逐小时降水概率”，并不是“5 小时整轮的降雨概率”。",
+    summaryBody: "先看哪个时段容易下雨，再看雨有多大、需要准备什么。",
     emptyState: "选择球场、日期和开球时间后，这里会显示 5 小时窗口的预报。",
     missingForecast: "未找到所选时间段的预报，请更换日期或开球时间后重试。",
-    maxHourlyProbabilityLabel: "最高逐小时降水概率",
+    maxHourlyProbabilityLabel: "最容易下雨的一小时",
     rainfallTotalLabel: "累计降水量",
     startTimeCardLabel: "开球时间",
     riskLabelPrefix: "级别",
@@ -206,12 +210,14 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "获取时间",
     fetchedAtLabel: "获取时间",
     sourceLabel: "数据来源",
-    timelineTitle: "逐小时时间线",
+    timelineTitle: "打球期间的天气",
+    timelineHelp: "蓝条越长，那一小时的雨量越多。点一下时段，上方动画会跟着切换。",
     partialOverlapLabel: (minutes) => `该时段仅与本轮重叠 ${minutes} 分钟`,
     fullOverlapLabel: "该时段与本轮完整重叠 60 分钟",
-    probabilityLabel: "降水概率",
+    probabilityLabel: "下雨的可能性",
     precipitationLabel: "降水量",
     windLabel: "风速",
+    temperatureLabel: "气温",
     footerSource: "天气来源：Open-Meteo Forecast API / 所有显示时间均为 JST。",
     footerCourseData: "球场搜索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
     footerWarning: "注意：预报属于模型输出，并非实测，也不保证准确。页面不会生成自定义的整轮降雨概率。",
@@ -222,13 +228,12 @@ const translations: Record<Language, TranslationSet> = {
       high: "看起来需要按有雨准备，尤其建议重点关注开球前后的时段。",
     },
     sourceNotes: [
+      "气温和风速对应每个时段结束时刻；气温不是体感温度。",
       "Open-Meteo 的逐小时降水概率表示各 1 小时时段的预报值，不代表整轮打球期间的总体降雨概率。",
       "如果开球时间是半点，首尾两个小时段只会与 5 小时回合部分重叠。",
     ],
   },
   en: {
-    langLabel: "Language",
-    productBadge: "Golf Rain MVP",
     heroTitle: "Read the sky. Own your swing.",
     heroBody:
       "Search for a golf course in Japan, then choose a play date, and a tee time to see hourly precipitation probability, precipitation amount, and wind speed for an estimated five-hour round.",
@@ -248,17 +253,17 @@ const translations: Record<Language, TranslationSet> = {
     playDateLabel: "Play date",
     teeTimeLabel: "Tee time",
     roundEstimateLabel: (hours) => `Round estimate: ${hours} hours from tee-off`,
-    unitsLabel: "Shown per hour: precipitation probability, precipitation amount, and 10m wind speed",
+    unitsLabel: "Shown hourly: temperature (°C), rain probability, rainfall and 10m wind speed (m/s)",
     submitIdle: "Check rain risk",
     submitLoading: "Loading forecast...",
     dateRangeError: (minDate, maxDate) => `Supported dates run from ${minDate} to ${maxDate}.`,
     fetchError: "Forecast lookup failed. Please try again shortly.",
     networkError: "A network error occurred. Please check your connection.",
     summaryTitle: "Forecast summary",
-    summaryBody: "This highlights the maximum hourly precipitation probability. It is not a probability for rain across the whole five-hour round.",
+    summaryBody: "See when rain is most likely, how much to expect, and what to bring.",
     emptyState: "Choose a course, date, and tee time to see the five-hour forecast window here.",
     missingForecast: "No forecast was available for the selected window. Try another date or tee time.",
-    maxHourlyProbabilityLabel: "Max hourly rain probability",
+    maxHourlyProbabilityLabel: "Hour with the highest chance of rain",
     rainfallTotalLabel: "Total precipitation",
     startTimeCardLabel: "Tee time",
     riskLabelPrefix: "Level",
@@ -266,12 +271,14 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "Fetched at",
     fetchedAtLabel: "Fetched at",
     sourceLabel: "Source",
-    timelineTitle: "Hourly timeline",
+    timelineTitle: "Weather during your round",
+    timelineHelp: "Longer blue bars mean more rain in that hour. Select an hour to update the animation above.",
     partialOverlapLabel: (minutes) => `This hour overlaps the round by ${minutes} minutes`,
     fullOverlapLabel: "This hour overlaps the round by a full 60 minutes",
     probabilityLabel: "Rain probability",
     precipitationLabel: "Precipitation",
     windLabel: "Wind speed",
+    temperatureLabel: "Temperature",
     footerSource: "Weather source: Open-Meteo Forecast API / All displayed times use JST.",
     footerCourseData: "Course search: Photon / Overpass / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
     footerWarning: "Note: Forecasts are model output, not observed rain, and are not guaranteed. The app does not invent a whole-round probability.",
@@ -282,6 +289,7 @@ const translations: Record<Language, TranslationSet> = {
       high: "You should plan for wet conditions, especially around the start of the round.",
     },
     sourceNotes: [
+      "Temperature and wind are forecasts for each bucket's end time. Temperature is not feels-like temperature.",
       "Open-Meteo hourly precipitation probability applies to each one-hour forecast bucket. It is not a probability for the entire round.",
       "For half-hour tee times, the first and last hourly buckets only partially overlap the estimated five-hour round.",
     ],
@@ -313,7 +321,7 @@ function buildTeeTimeOptions() {
 const teeTimeOptions = buildTeeTimeOptions();
 
 export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
-  const [language, setLanguage] = useState<Language>(initialLanguage);
+  const language = initialLanguage;
   const [query, setQuery] = useState("");
   const [courses, setCourses] = useState<GolfCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<GolfCourse | null>(null);
@@ -329,10 +337,16 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const [selectedDate, setSelectedDate] = useState(bounds.minDate);
   const [teeTime, setTeeTime] = useState("08:30");
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
+  const [selectedForecastHour, setSelectedForecastHour] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const t = translations[language];
+  const rainfallScale = Math.max(5, ...forecast?.hours.map((hour) => hour.precipitationMm ?? 0) ?? []);
+  const rainiestHour = forecast?.hours.find((hour) =>
+    hour.precipitationProbability !== null &&
+    hour.precipitationProbability === forecast.summary.highestHourlyProbability,
+  );
   function handleQueryChange(value: string) {
     searchController.current?.abort();
     searchSequence.current += 1;
@@ -381,10 +395,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
     }
   }
 
-  function handleLanguageChange(nextLanguage: Language) {
-    setLanguage(nextLanguage);
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedCourse) return;
@@ -413,6 +423,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
       }
 
       setForecast(payload);
+      setSelectedForecastHour(null);
     } catch {
       setErrorMessage(t.networkError);
       setForecast(null);
@@ -422,38 +433,16 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main lang={language === "zh" ? "zh-CN" : language} className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 pt-6 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8">
       <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-lg shadow-sky-100 backdrop-blur sm:p-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <p className="inline-flex w-fit rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700">
-              {t.productBadge}
-            </p>
             <div className="space-y-2">
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{t.heroTitle}</h1>
               <p className="text-sm leading-6 text-slate-600 sm:text-base">{t.heroBody}</p>
             </div>
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-              <span className="font-medium">{t.langLabel}</span>
-              {([
-                ["ja", "日本語"],
-                ["zh", "中文"],
-                ["en", "English"],
-              ] as const).map(([code, label]) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => handleLanguageChange(code)}
-                  className={`rounded-full px-3 py-1 transition ${
-                    language === code ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             <div className="rounded-2xl bg-slate-950 px-4 py-3 text-sm text-slate-100">
               <p>{t.timezoneLabel}: Asia/Tokyo</p>
               <p>{t.dateRangeLabel}: {bounds.minDate} 〜 {bounds.maxDate}</p>
@@ -607,6 +596,8 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             <p className="text-sm leading-6 text-slate-600">{t.summaryBody}</p>
           </div>
 
+          {!forecast ? <RainImpact language={language} /> : null}
+
           {!forecast ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               {t.emptyState}
@@ -617,11 +608,16 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           ) : (
             <div className="space-y-5">
+              <RainImpact key={forecast.source.fetchedAt} language={language} hours={forecast.hours}
+                selectedTime={selectedForecastHour} onTimeChange={setSelectedForecastHour} />
+              <ClothingAdvice language={language} advice={forecast.clothing} />
+
               <div className="grid gap-3 sm:grid-cols-3">
                 <article className="rounded-2xl bg-slate-950 p-4 text-white">
                   <div className="text-xs uppercase tracking-[0.2em] text-slate-300">{t.maxHourlyProbabilityLabel}</div>
-                  <div className="mt-2 text-3xl font-semibold">{forecast.summary.highestHourlyProbability}%</div>
-                  <div className="mt-1 text-sm text-slate-300">{t.riskLabelPrefix}: {t.riskLabels[forecast.summary.riskLevel]}</div>
+                  {rainiestHour ? <div className="mt-2 text-sm text-slate-200">{rainiestHour.bucketStart}–{rainiestHour.bucketEnd} JST</div> : null}
+                  <div className="mt-2 text-3xl font-semibold">{rainiestHour ? `${rainiestHour.precipitationProbability}%` : "—"}</div>
+                  <div className="mt-1 text-sm text-slate-300">{t.probabilityLabel}</div>
                 </article>
                 <article className="rounded-2xl bg-sky-50 p-4 text-sky-950">
                   <div className="text-xs uppercase tracking-[0.2em] text-sky-700">{t.rainfallTotalLabel}</div>
@@ -637,7 +633,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
                 <p className="font-medium text-slate-900">{forecast.course.name}</p>
-                <p>{t.riskSummaries[forecast.summary.riskLevel]}</p>
+                <p>{t.fiveHourWindowLabel}: {forecast.round.start.slice(11, 16)}–{forecast.round.end.slice(11, 16)} JST</p>
                 <p className="mt-2 text-xs text-slate-500">
                   {t.fetchedAtLabel}: {formatFetchTime(forecast.source.fetchedAt, language)} / {t.sourceLabel}: {forecast.source.provider}
                 </p>
@@ -645,41 +641,36 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
 
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-slate-900">{t.timelineTitle}</h3>
-                <div className="grid gap-3">
+                <p className="text-xs leading-5 text-slate-600">{t.timelineHelp}</p>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>JST</span><span>{t.precipitationLabel}: 0–{rainfallScale} mm</span>
+                </div>
+                <div className="grid gap-2">
                   {forecast.hours.map((hour) => (
-                    <article key={hour.time} className="rounded-2xl border border-slate-200 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="text-base font-semibold text-slate-900">
-                            {hour.bucketStart}–{hour.bucketEnd}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            {hour.isPartialHour ? t.partialOverlapLabel(hour.overlapMinutes) : t.fullOverlapLabel}
-                          </div>
-                        </div>
-                        <div className="h-2 w-full rounded-full bg-slate-100 sm:max-w-40">
-                          <div
-                            className="h-2 rounded-full bg-sky-500"
-                            style={{ width: `${Math.max(hour.precipitationProbability ?? 0, 4)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                        <div className="rounded-2xl bg-slate-50 p-3">
-                          <dt className="text-slate-500">{t.probabilityLabel}</dt>
-                          <dd className="mt-1 text-lg font-semibold text-slate-900">{hour.precipitationProbability ?? "—"}%</dd>
-                        </div>
-                        <div className="rounded-2xl bg-slate-50 p-3">
-                          <dt className="text-slate-500">{t.precipitationLabel}</dt>
-                          <dd className="mt-1 text-lg font-semibold text-slate-900">{hour.precipitationMm ?? "—"} mm</dd>
-                        </div>
-                        <div className="rounded-2xl bg-slate-50 p-3">
-                          <dt className="text-slate-500">{t.windLabel}</dt>
-                          <dd className="mt-1 text-lg font-semibold text-slate-900">{hour.windSpeedKmh ?? "—"} km/h</dd>
-                        </div>
-                      </dl>
-                    </article>
+                    <button key={hour.time} type="button" onClick={() => setSelectedForecastHour(hour.time)}
+                      aria-pressed={selectedForecastHour === hour.time}
+                      className={`rounded-xl border p-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${selectedForecastHour === hour.time ? "border-sky-500 bg-sky-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+                      <span className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-3">
+                        <span className="text-sm font-semibold tabular-nums text-slate-900">
+                          <span className="block">{hour.bucketStart}</span>
+                          <span className="block text-xs font-normal text-slate-500">–{hour.bucketEnd}</span>
+                        </span>
+                        <span className="space-y-2">
+                          <span className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-semibold tabular-nums text-sky-900">{hour.precipitationMm === null ? "—" : `${hour.precipitationMm} mm`}</span>
+                            <span className="text-slate-600">{t.probabilityLabel} {hour.precipitationProbability === null ? "—" : `${hour.precipitationProbability}%`}</span>
+                          </span>
+                          <span aria-hidden="true" className="block h-3 overflow-hidden rounded-full bg-slate-100">
+                            <span className="block h-full rounded-full bg-sky-500" style={{ width: `${(hour.precipitationMm ?? 0) / rainfallScale * 100}%` }} />
+                          </span>
+                          <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                            <span>{t.temperatureLabel} ({hour.bucketEnd}) {hour.temperatureC == null ? "—" : `${hour.temperatureC} °C`}</span>
+                            <span>{t.windLabel} {hour.windSpeedKmh === null ? "—" : `${(hour.windSpeedKmh / 3.6).toFixed(1)} m/s`}</span>
+                          </span>
+                        </span>
+                      </span>
+                      {hour.isPartialHour ? <span className="mt-2 block text-xs text-slate-500">{t.partialOverlapLabel(hour.overlapMinutes)}</span> : null}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -694,10 +685,19 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
         </section>
       </section>
 
+      <section aria-labelledby="about-golf-rain" className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5 text-sm leading-7 text-slate-600 sm:p-6">
+        <h2 id="about-golf-rain" className="text-lg font-semibold text-slate-900">{pageContent[language].aboutTitle}</h2>
+        <p>{pageContent[language].aboutBody}</p>
+        <p>{pageContent[language].aboutHelp}</p>
+      </section>
+
       <footer className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm sm:px-6">
         <p>{t.footerSource}</p>
         <p>{t.footerCourseData} <a href="https://www.openstreetmap.org/copyright" className="underline" target="_blank" rel="noreferrer">OpenStreetMap</a> · <a href="https://github.com/komoot/photon" className="underline" target="_blank" rel="noreferrer">Photon</a></p>
         <p>{t.footerWarning}</p>
+      </footer>
+      <footer lang="en" className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-center text-xs leading-5 text-slate-600 backdrop-blur">
+        <p>© 2026 Purumomo. All rights reserved. Powered by Purumomo AI Technologies.</p>
       </footer>
     </main>
   );

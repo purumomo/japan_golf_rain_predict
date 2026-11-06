@@ -16,7 +16,21 @@ body {
   background:
     radial-gradient(circle at top, rgba(39, 113, 255, 0.1), transparent 28%),
     linear-gradient(180deg, #f8fbff 0%, #eef4fb 45%, #f4f7fb 100%);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+}
+
+main:lang(zh) {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC",
+    sans-serif;
+}
+
+main:lang(en) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+main:lang(zh) h1,
+main:lang(zh) .uppercase {
+  letter-spacing: normal;
 }
 
 * {
@@ -36,4 +50,46 @@ select {
 
 ::selection {
   background: rgba(31, 111, 235, 0.2);
+}
+
+.rain-scene {
+  position: relative;
+  overflow: hidden;
+  background: #e2f0f1;
+}
+
+.rain-drop {
+  animation: rainfall 1.15s linear infinite;
+}
+
+.rain-scene-paused .rain-drop {
+  animation-play-state: paused;
+}
+
+@keyframes rainfall {
+  from { transform: translate(0, 0); }
+  to { transform: translate(-55px, 280px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain-drop {
+    animation-play-state: paused;
+  }
+}
+
+.packing-garment {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pack-clothing 1.6s ease-in-out 2;
+}
+
+@keyframes pack-clothing {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-5px) rotate(3deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .packing-garment {
+    animation: none;
+  }
 }

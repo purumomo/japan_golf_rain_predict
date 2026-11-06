@@ -106,6 +106,7 @@ def create_app(test_config=None):
             },
             bounds=bounds,
             summary=result["summary"],
+            clothing=result.get("clothing"),
             hours=result["hours"],
             missingForecast=not result["hours"],
         )
