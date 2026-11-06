@@ -14,7 +14,7 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
         {
             "latitude": course["latitude"],
             "longitude": course["longitude"],
-            "hourly": "precipitation_probability,precipitation,wind_speed_10m,temperature_2m",
+            "hourly": "precipitation_probability,precipitation,wind_speed_10m,temperature_2m,rain,showers,snowfall",
             "timezone": "Asia/Tokyo",
             "wind_speed_unit": "kmh",
             "precipitation_unit": "mm",
@@ -43,16 +43,19 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
             return None
         return value
 
-    entries = [
-        {
+    entries = []
+    for index, timestamp in enumerate(times):
+        rain = value_at("rain", index)
+        showers = value_at("showers", index)
+        entries.append({
             "time": timestamp,
             "precipitationProbability": value_at("precipitation_probability", index, 100),
             "precipitationMm": value_at("precipitation", index),
             "windSpeedKmh": value_at("wind_speed_10m", index),
             "temperatureC": value_at("temperature_2m", index, minimum=None),
-        }
-        for index, timestamp in enumerate(times)
-    ]
+            "rainMm": round(rain + showers, 3) if rain is not None and showers is not None else None,
+            "snowfallCm": value_at("snowfall", index),
+        })
     try:
         hours = select_overlapping_hours(entries, date, tee_time)
     except (ValueError, TypeError) as error:

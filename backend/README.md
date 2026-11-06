@@ -45,6 +45,8 @@ Open-Meteo precipitation bins refer to the preceding hour. Half-hour tee times i
 
 Hourly forecasts also include `temperatureC` from Open-Meteo's `temperature_2m`, explicitly requested in Celsius. Negative and zero temperatures are valid; absent or invalid values remain null. Temperature and wind correspond to the bucket end timestamp, while precipitation describes the preceding hour.
 
+The scene uses separate hourly precipitation types: `rainMm` combines documented `rain` and `showers` values only when both are available; `snowfallCm` comes directly from `snowfall` in centimeters. Missing or invalid values stay null. `precipitationMm` remains total precipitation, including snow water equivalent. The frontend can show rain, snow, or both without guessing snow from temperature, and does not treat snowfall as accumulated ground snow depth.
+
 The `clothing` response supplies a packing checklist and the range of available hourly temperatures. These are app guidelines, not provider recommendations or a thermal comfort model: the coldest hourly temperature selects a warm layer below 10°C, long sleeves below 20°C, or a breathable shirt otherwise. Any positive rainfall amount or hourly probability of at least 40% adds a waterproof jacket and spare gloves; an hourly amount of at least 3 mm adds waterproof trousers. Without a rain recommendation, wind of at least 18 km/h adds a windproof layer. Missing weather values are flagged, and missing temperature never defaults to warm conditions. The frontend displays simple garment animations and translates the checklist without making provider calls.
 
 ## Checks

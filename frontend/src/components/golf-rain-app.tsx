@@ -4,10 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-advice";
 import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
-import { RainImpact } from "@/components/rain-impact";
 import type { GolfCourse } from "@/lib/courses";
 import type { Language } from "@/lib/language";
-import { ROUND_DURATION_HOURS } from "@/lib/tee-window";
+import { getForecastDateOptions, ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
 type RiskLevel = "low" | "medium" | "high";
 
@@ -115,7 +114,7 @@ const translations: Record<Language, TranslationSet> = {
     teeTimeLabel: "スタート時間",
     roundEstimateLabel: (hours) => `ラウンド時間の目安：スタートから${hours}時間`,
     unitsLabel: "表示内容：1時間ごとの気温（°C）・降水確率・降水量・地上10mの風速（m/s）",
-    submitIdle: "雨リスクを確認する",
+    submitIdle: "プレー中の天気を確認する",
     submitLoading: "予報を取得中...",
     dateRangeError: (minDate, maxDate) => `${minDate}から${maxDate}までの日付を選んでください。`,
     fetchError: "天気予報の取得に失敗しました。少し待ってから再試行してください。",
@@ -124,7 +123,7 @@ const translations: Record<Language, TranslationSet> = {
     summaryBody: "プレー中の気温・風速・降水予報を確認して、ウェアや持ち物を準備しましょう。",
     emptyState: "ゴルフ場・プレー日・スタート時間を選ぶと、ここにスタートから5時間分の予報が表示されます。",
     missingForecast: "選択した時間帯の予報が見つかりませんでした。日付かスタート時間を変えて再試行してください。",
-    maxHourlyProbabilityLabel: "最も雨が降りやすい1時間",
+    maxHourlyProbabilityLabel: "最も雨や雪が降りやすい1時間",
     rainfallTotalLabel: "累積降水量",
     startTimeCardLabel: "スタート時間",
     riskLabelPrefix: "雨のリスク",
@@ -168,8 +167,8 @@ const translations: Record<Language, TranslationSet> = {
     playDateLabel: "打球日期",
     teeTimeLabel: "开球时间",
     roundEstimateLabel: (hours) => `回合估算：从开球起 ${hours} 小时`,
-    unitsLabel: "显示内容：逐小时气温（°C）、下雨可能性、雨量、10m 风速（m/s）",
-    submitIdle: "查看降雨风险",
+    unitsLabel: "显示内容：逐小时气温（°C）、雨雪可能性、降水量、10m 风速（m/s）",
+    submitIdle: "查看打球天气",
     submitLoading: "正在获取预报...",
     dateRangeError: (minDate, maxDate) => `支持的日期范围为 ${minDate} 到 ${maxDate}。`,
     fetchError: "天气预报获取失败，请稍后重试。",
@@ -178,7 +177,7 @@ const translations: Record<Language, TranslationSet> = {
     summaryBody: "查看打球期间的气温、风速和降雨预报，提前准备衣物和装备。",
     emptyState: "选择球场、日期和开球时间后，这里会显示 5 小时窗口的预报。",
     missingForecast: "未找到所选时间段的预报，请更换日期或开球时间后重试。",
-    maxHourlyProbabilityLabel: "最容易下雨的一小时",
+    maxHourlyProbabilityLabel: "最可能有雨雪的一小时",
     rainfallTotalLabel: "累计降水量",
     startTimeCardLabel: "开球时间",
     riskLabelPrefix: "级别",
@@ -186,7 +185,7 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "获取时间",
     fetchedAtLabel: "获取时间",
     sourceLabel: "数据来源",
-    probabilityLabel: "下雨的可能性",
+    probabilityLabel: "雨雪可能性",
     footerSource: "天气来源：Open-Meteo Forecast API / 所有显示时间均为 JST。",
     footerCourseData: "球场搜索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
     footerWarning: "注意：预报属于模型输出，并非实测，也不保证准确。页面不会生成自定义的整轮降雨概率。",
@@ -222,8 +221,8 @@ const translations: Record<Language, TranslationSet> = {
     playDateLabel: "Play date",
     teeTimeLabel: "Tee time",
     roundEstimateLabel: (hours) => `Round estimate: ${hours} hours from tee-off`,
-    unitsLabel: "Shown hourly: temperature (°C), rain probability, rainfall and 10m wind speed (m/s)",
-    submitIdle: "Check rain risk",
+    unitsLabel: "Shown hourly: temperature (°C), precipitation probability, precipitation and 10m wind speed (m/s)",
+    submitIdle: "Check golf weather",
     submitLoading: "Loading forecast...",
     dateRangeError: (minDate, maxDate) => `Supported dates run from ${minDate} to ${maxDate}.`,
     fetchError: "Forecast lookup failed. Please try again shortly.",
@@ -232,7 +231,7 @@ const translations: Record<Language, TranslationSet> = {
     summaryBody: "Check temperature, wind and precipitation forecasts for your round, then plan your outfit and equipment.",
     emptyState: "Choose a course, date, and tee time to see the five-hour forecast window here.",
     missingForecast: "No forecast was available for the selected window. Try another date or tee time.",
-    maxHourlyProbabilityLabel: "Hour with the highest chance of rain",
+    maxHourlyProbabilityLabel: "Hour with the highest chance of rain or snow",
     rainfallTotalLabel: "Total precipitation",
     startTimeCardLabel: "Tee time",
     riskLabelPrefix: "Level",
@@ -240,7 +239,7 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "Fetched at",
     fetchedAtLabel: "Fetched at",
     sourceLabel: "Source",
-    probabilityLabel: "Rain probability",
+    probabilityLabel: "Rain / snow probability",
     footerSource: "Weather source: Open-Meteo Forecast API / All displayed times use JST.",
     footerCourseData: "Course search: Photon / Overpass / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
     footerWarning: "Note: Forecasts are model output, not observed rain, and are not guaranteed. The app does not invent a whole-round probability.",
@@ -299,11 +298,14 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const [selectedDate, setSelectedDate] = useState(bounds.minDate);
   const [teeTime, setTeeTime] = useState("08:30");
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
-  const [selectedForecastHour, setSelectedForecastHour] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const t = translations[language];
+  const dateOptions = getForecastDateOptions(bounds);
+  const dateFormatter = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US", {
+    year: "numeric", month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Tokyo",
+  });
   const rainiestHour = forecast?.hours.find((hour) =>
     hour.precipitationProbability !== null &&
     hour.precipitationProbability === forecast.summary.highestHourlyProbability,
@@ -384,7 +386,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
       }
 
       setForecast(payload);
-      setSelectedForecastHour(null);
     } catch {
       setErrorMessage(t.networkError);
       setForecast(null);
@@ -404,7 +405,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="rounded-2xl bg-slate-950 px-4 py-3 text-sm text-slate-100">
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-600">
               <p>{t.timezoneLabel}: Asia/Tokyo</p>
               <p>{t.dateRangeLabel}: {bounds.minDate} 〜 {bounds.maxDate}</p>
             </div>
@@ -502,16 +503,17 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
               <label htmlFor="play-date" className="block text-sm font-medium text-slate-800">
                 {t.playDateLabel}
               </label>
-              <input
+              <select
                 id="play-date"
-                type="date"
                 disabled={isLoading}
                 value={selectedDate}
-                min={bounds.minDate}
-                max={bounds.maxDate}
                 onChange={(event) => { setSelectedDate(event.target.value); setForecast(null); setErrorMessage(null); }}
                 className="round-input rounded-2xl border border-slate-300 px-4 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
-              />
+              >
+                {dateOptions.map((date) => <option key={date} value={date}>
+                  {dateFormatter.format(new Date(`${date}T00:00:00+09:00`))}
+                </option>)}
+              </select>
             </div>
             <div className="min-w-0 space-y-2">
               <label htmlFor="tee-time" className="block text-sm font-medium text-slate-800">
@@ -557,8 +559,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             <p className="text-sm leading-6 text-slate-600">{t.summaryBody}</p>
           </div>
 
-          {!forecast ? <RainImpact language={language} /> : null}
-
           {!forecast ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               {t.emptyState}
@@ -569,16 +569,14 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           ) : (
             <div className="space-y-5">
-              <RainImpact key={forecast.source.fetchedAt} language={language} hours={forecast.hours}
-                selectedTime={selectedForecastHour} onTimeChange={setSelectedForecastHour} />
-              <ClothingAdvice language={language} advice={forecast.clothing} />
+              <HourlyWeather language={language} hours={forecast.hours} />
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <article className="rounded-2xl bg-slate-950 p-4 text-white">
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-300">{t.maxHourlyProbabilityLabel}</div>
-                  {rainiestHour ? <div className="mt-2 text-sm text-slate-200">{rainiestHour.bucketStart}–{rainiestHour.bucketEnd} JST</div> : null}
-                  <div className="mt-2 text-3xl font-semibold">{rainiestHour ? `${rainiestHour.precipitationProbability}%` : "—"}</div>
-                  <div className="mt-1 text-sm text-slate-300">{t.probabilityLabel}</div>
+                <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
+                  <div className="text-xs uppercase tracking-[0.2em] text-sky-700">{t.maxHourlyProbabilityLabel}</div>
+                  {rainiestHour ? <div className="mt-2 text-sm text-sky-800">{rainiestHour.bucketStart}–{rainiestHour.bucketEnd} JST</div> : null}
+                  <div className="mt-2 text-3xl font-semibold text-sky-900">{rainiestHour ? `${rainiestHour.precipitationProbability}%` : "—"}</div>
+                  <div className="mt-1 text-sm text-sky-700">{t.probabilityLabel}</div>
                 </article>
                 <article className="rounded-2xl bg-sky-50 p-4 text-sky-950">
                   <div className="text-xs uppercase tracking-[0.2em] text-sky-700">{t.rainfallTotalLabel}</div>
@@ -600,7 +598,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 </p>
               </div>
 
-              <HourlyWeather language={language} hours={forecast.hours} />
+              <ClothingAdvice language={language} advice={forecast.clothing} />
 
               <div className="rounded-2xl bg-slate-50 p-4 text-xs leading-6 text-slate-600">
                 {t.sourceNotes.map((note) => (

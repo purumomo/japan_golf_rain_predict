@@ -363,6 +363,21 @@ class ApiTests(unittest.TestCase):
 
 
 class WeatherTests(unittest.TestCase):
+    def test_rain_and_snow_are_separate_with_missing_data_preserved(self):
+        payload = {"hourly": {
+            "time": [f"2026-11-09T{hour:02d}:00" for hour in range(9, 15)],
+            "rain": [0, 0.1, 0, 1, 0, 2],
+            "showers": [0, 0.2, 0, None, 0, 0],
+            "snowfall": [0, 0.5, 2, None, -1, float("nan")],
+        }}
+        get_json = Mock(return_value=payload)
+        result = fetch_forecast_window(COURSE, "2026-11-09", "08:30", get_json)
+        self.assertEqual([hour["rainMm"] for hour in result["hours"]], [0, 0.3, 0, None, 0, 2])
+        self.assertEqual([hour["snowfallCm"] for hour in result["hours"]], [0, 0.5, 2, None, None, None])
+        self.assertTrue({"rain", "showers", "snowfall"}.issubset(
+            get_json.call_args.args[1]["hourly"].split(",")
+        ))
+
     def test_real_provider_parameters_and_partial_hour_selection(self):
         get_json = Mock(
             return_value={

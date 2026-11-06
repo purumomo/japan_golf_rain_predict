@@ -56,79 +56,106 @@ select {
   min-inline-size: 0;
   height: 3rem;
   background-color: #fff;
+  color: var(--foreground);
   font-size: 1rem;
   line-height: 1.5;
-}
-
-.round-input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
   text-align: left;
-}
-
-.round-input::-webkit-date-and-time-value {
-  min-height: 1.5em;
-  text-align: left;
-}
-
-.round-input::-webkit-datetime-edit {
-  padding: 0;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
 }
 
 ::selection {
   background: rgba(31, 111, 235, 0.2);
 }
 
-.temperature-fill {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: temperature-reveal 0.8s ease-out both;
+.round-scene-golfer {
+  animation: round-walk-bob 1.8s ease-in-out infinite;
 }
 
-.weather-wind-flow {
-  stroke-dasharray: 14 10;
-  animation: weather-wind-flow 2s linear infinite;
+.round-scene-leg,
+.round-scene-arm {
+  transform-origin: 0 0;
+  animation: round-walk-step 1.8s ease-in-out infinite;
 }
 
-@keyframes temperature-reveal {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
+.round-scene-leg-back {
+  animation-delay: -0.9s;
 }
 
-@keyframes weather-wind-flow {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -24; }
+.round-scene-arm {
+  animation-delay: -0.9s;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .temperature-fill,
-  .weather-wind-flow {
-    animation: none;
-  }
+.round-scene-flag {
+  transform-origin: 0 10px;
+  animation: round-flag-wave 1.5s ease-in-out infinite alternate;
 }
 
-.rain-scene {
-  position: relative;
-  overflow: hidden;
-  background: #e2f0f1;
+.round-scene-tree {
+  transform-origin: 0 47px;
+  animation: round-tree-sway 3s ease-in-out infinite alternate;
 }
 
-.rain-drop {
-  animation: rainfall 1.15s linear infinite;
+.round-scene-wind {
+  animation: round-wind-drift 2s linear infinite;
 }
 
-.rain-scene-paused .rain-drop {
+.round-scene-rain {
+  animation: round-rain-fall 1s linear infinite;
+}
+
+.round-weather-scene.round-scene-paused * {
   animation-play-state: paused;
 }
 
-@keyframes rainfall {
+@keyframes round-walk-bob {
+  0%, 50%, 100% { transform: translateY(0); }
+  25%, 75% { transform: translateY(-2px); }
+}
+
+@keyframes round-walk-step {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(9deg); }
+}
+
+@keyframes round-flag-wave {
+  from { transform: scaleX(0.78) skewY(-5deg); }
+  to { transform: scaleX(1) skewY(5deg); }
+}
+
+@keyframes round-tree-sway {
+  from { transform: rotate(calc(var(--tree-sway, 2deg) * -0.4)); }
+  to { transform: rotate(var(--tree-sway, 2deg)); }
+}
+
+@keyframes round-wind-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(740px); }
+}
+
+@keyframes round-rain-fall {
   from { transform: translate(0, 0); }
-  to { transform: translate(-55px, 280px); }
+  to { transform: translate(-75px, 390px); }
+}
+
+.round-scene-snow {
+  animation: round-snow-fall 5s linear infinite;
+}
+
+@keyframes round-snow-fall {
+  0% { transform: translate(0, -15px) rotate(0deg); }
+  50% { transform: translate(calc(var(--snow-drift, -12px) * 0.35), 180px) rotate(90deg); }
+  100% { transform: translate(var(--snow-drift, -12px), 390px) rotate(180deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rain-drop {
-    animation-play-state: paused;
+  .round-weather-scene * {
+    animation: none;
   }
 }
 

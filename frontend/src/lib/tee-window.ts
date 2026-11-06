@@ -45,3 +45,11 @@ export function getForecastDateBounds(referenceDate = new Date()): ForecastDateB
 
   return { minDate, maxDate };
 }
+
+export function getForecastDateOptions({ minDate, maxDate }: ForecastDateBounds) {
+  const dates: string[] = [];
+  for (let date = minDate; date <= maxDate; date = addDaysToYmd(date, 1)) {
+    dates.push(date);
+  }
+  return dates;
+}
