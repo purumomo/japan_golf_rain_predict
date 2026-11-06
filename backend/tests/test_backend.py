@@ -88,6 +88,14 @@ class WindowTests(unittest.TestCase):
         self.assertEqual((hours[0]["bucketStart"], hours[0]["bucketEnd"]), ("08:00", "09:00"))
         self.assertEqual((hours[-1]["bucketStart"], hours[-1]["bucketEnd"]), ("13:00", "14:00"))
         self.assertEqual(hours[0]["precipitationProbability"], 20)
+        self.assertEqual((hours[0]["playStart"], hours[0]["playEnd"]), ("08:30", "09:00"))
+        self.assertEqual((hours[-1]["playStart"], hours[-1]["playEnd"]), ("13:00", "13:30"))
+
+    def test_play_labels_cross_midnight(self):
+        entries = [hourly_entry("2026-11-10T00:00"), hourly_entry("2026-11-10T01:00")]
+        hours = select_overlapping_hours(entries, "2026-11-09", "23:30", round_hours=1)
+        self.assertEqual([(hour["playStart"], hour["playEnd"]) for hour in hours],
+                         [("23:30", "00:00"), ("00:00", "00:30")])
 
     def test_whole_hour_window_does_not_include_adjacent_hours(self):
         entries = [hourly_entry(f"2026-11-09T{hour:02d}:00") for hour in range(8, 16)]

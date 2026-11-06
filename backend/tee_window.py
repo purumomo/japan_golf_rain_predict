@@ -32,6 +32,8 @@ def select_overlapping_hours(entries, date, tee_time, round_hours=ROUND_DURATION
                     **entry,
                     "bucketStart": bucket_start.strftime("%H:%M"),
                     "bucketEnd": bucket_end.strftime("%H:%M"),
+                    "playStart": max(bucket_start, start).strftime("%H:%M"),
+                    "playEnd": min(bucket_end, end).strftime("%H:%M"),
                     "overlapMinutes": minutes,
                     "isPartialHour": minutes < 60,
                 }

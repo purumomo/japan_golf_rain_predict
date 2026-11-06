@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-advice";
+import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
 import { RainImpact } from "@/components/rain-impact";
 import type { GolfCourse } from "@/lib/courses";
 import type { Language } from "@/lib/language";
@@ -34,17 +35,7 @@ type ForecastResponse = {
     totalPrecipitationMm: number;
     riskLevel: RiskLevel;
   };
-  hours: Array<{
-    time: string;
-    bucketStart: string;
-    bucketEnd: string;
-    overlapMinutes: number;
-    isPartialHour: boolean;
-    precipitationProbability: number | null;
-    precipitationMm: number | null;
-    windSpeedKmh: number | null;
-    temperatureC: number | null;
-  }>;
+  hours: WeatherHour[];
   missingForecast: boolean;
   clothing?: ClothingAdviceData | null;
 };
@@ -94,14 +85,7 @@ type TranslationSet = {
   courseSummaryPrefix: string;
   fetchedAtLabel: string;
   sourceLabel: string;
-  timelineTitle: string;
-  timelineHelp: string;
-  partialOverlapLabel: (minutes: number) => string;
-  fullOverlapLabel: string;
   probabilityLabel: string;
-  precipitationLabel: string;
-  windLabel: string;
-  temperatureLabel: string;
   footerSource: string;
   footerCourseData: string;
   footerWarning: string;
@@ -149,14 +133,7 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "取得時刻",
     fetchedAtLabel: "取得時刻",
     sourceLabel: "予報の提供元",
-    timelineTitle: "プレー中の天気",
-    timelineHelp: "棒が長いほど、その1時間の雨量が多い予報です。時間を押すと、上のアニメーションが切り替わります。",
-    partialOverlapLabel: (minutes) => `ラウンドと ${minutes} 分だけ重なる時間帯`,
-    fullOverlapLabel: "ラウンドと 60 分重なる時間帯",
     probabilityLabel: "降水確率",
-    precipitationLabel: "降水量",
-    windLabel: "風速",
-    temperatureLabel: "気温",
     footerSource: "天気予報の提供元：Open-Meteo Forecast API / 時刻はすべて日本標準時（JST）で表示しています。",
     footerCourseData: "ゴルフ場検索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地図上の名称や位置が最新でない場合があります。",
     footerWarning: "注意: 予報はモデル出力であり、実測や的中保証ではありません。独自のラウンド全体降水確率は表示していません。",
@@ -210,14 +187,7 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "获取时间",
     fetchedAtLabel: "获取时间",
     sourceLabel: "数据来源",
-    timelineTitle: "打球期间的天气",
-    timelineHelp: "蓝条越长，那一小时的雨量越多。点一下时段，上方动画会跟着切换。",
-    partialOverlapLabel: (minutes) => `该时段仅与本轮重叠 ${minutes} 分钟`,
-    fullOverlapLabel: "该时段与本轮完整重叠 60 分钟",
     probabilityLabel: "下雨的可能性",
-    precipitationLabel: "降水量",
-    windLabel: "风速",
-    temperatureLabel: "气温",
     footerSource: "天气来源：Open-Meteo Forecast API / 所有显示时间均为 JST。",
     footerCourseData: "球场搜索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
     footerWarning: "注意：预报属于模型输出，并非实测，也不保证准确。页面不会生成自定义的整轮降雨概率。",
@@ -271,14 +241,7 @@ const translations: Record<Language, TranslationSet> = {
     courseSummaryPrefix: "Fetched at",
     fetchedAtLabel: "Fetched at",
     sourceLabel: "Source",
-    timelineTitle: "Weather during your round",
-    timelineHelp: "Longer blue bars mean more rain in that hour. Select an hour to update the animation above.",
-    partialOverlapLabel: (minutes) => `This hour overlaps the round by ${minutes} minutes`,
-    fullOverlapLabel: "This hour overlaps the round by a full 60 minutes",
     probabilityLabel: "Rain probability",
-    precipitationLabel: "Precipitation",
-    windLabel: "Wind speed",
-    temperatureLabel: "Temperature",
     footerSource: "Weather source: Open-Meteo Forecast API / All displayed times use JST.",
     footerCourseData: "Course search: Photon / Overpass / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
     footerWarning: "Note: Forecasts are model output, not observed rain, and are not guaranteed. The app does not invent a whole-round probability.",
@@ -342,7 +305,6 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const t = translations[language];
-  const rainfallScale = Math.max(5, ...forecast?.hours.map((hour) => hour.precipitationMm ?? 0) ?? []);
   const rainiestHour = forecast?.hours.find((hour) =>
     hour.precipitationProbability !== null &&
     hour.precipitationProbability === forecast.summary.highestHourlyProbability,
@@ -639,41 +601,8 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-900">{t.timelineTitle}</h3>
-                <p className="text-xs leading-5 text-slate-600">{t.timelineHelp}</p>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>JST</span><span>{t.precipitationLabel}: 0–{rainfallScale} mm</span>
-                </div>
-                <div className="grid gap-2">
-                  {forecast.hours.map((hour) => (
-                    <button key={hour.time} type="button" onClick={() => setSelectedForecastHour(hour.time)}
-                      aria-pressed={selectedForecastHour === hour.time}
-                      className={`rounded-xl border p-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${selectedForecastHour === hour.time ? "border-sky-500 bg-sky-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                      <span className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-3">
-                        <span className="text-sm font-semibold tabular-nums text-slate-900">
-                          <span className="block">{hour.bucketStart}</span>
-                          <span className="block text-xs font-normal text-slate-500">–{hour.bucketEnd}</span>
-                        </span>
-                        <span className="space-y-2">
-                          <span className="flex items-center justify-between gap-2 text-xs">
-                            <span className="font-semibold tabular-nums text-sky-900">{hour.precipitationMm === null ? "—" : `${hour.precipitationMm} mm`}</span>
-                            <span className="text-slate-600">{t.probabilityLabel} {hour.precipitationProbability === null ? "—" : `${hour.precipitationProbability}%`}</span>
-                          </span>
-                          <span aria-hidden="true" className="block h-3 overflow-hidden rounded-full bg-slate-100">
-                            <span className="block h-full rounded-full bg-sky-500" style={{ width: `${(hour.precipitationMm ?? 0) / rainfallScale * 100}%` }} />
-                          </span>
-                          <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-                            <span>{t.temperatureLabel} ({hour.bucketEnd}) {hour.temperatureC == null ? "—" : `${hour.temperatureC} °C`}</span>
-                            <span>{t.windLabel} {hour.windSpeedKmh === null ? "—" : `${(hour.windSpeedKmh / 3.6).toFixed(1)} m/s`}</span>
-                          </span>
-                        </span>
-                      </span>
-                      {hour.isPartialHour ? <span className="mt-2 block text-xs text-slate-500">{t.partialOverlapLabel(hour.overlapMinutes)}</span> : null}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <HourlyWeather language={language} hours={forecast.hours}
+                selectedTime={selectedForecastHour} onSelect={setSelectedForecastHour} />
 
               <div className="rounded-2xl bg-slate-50 p-4 text-xs leading-6 text-slate-600">
                 {t.sourceNotes.map((note) => (
