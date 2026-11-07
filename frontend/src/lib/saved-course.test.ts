@@ -13,9 +13,16 @@ describe("last selected course in browser storage", () => {
     expect(getServerCourseSnapshot()).toBeNull();
   });
 
+  it("restores courses across hemispheres", () => {
+    for (const [latitude, longitude] of [[36.56, -121.95], [-33.87, 151.21], [56.34, -2.8]]) {
+      const selected = { ...course, latitude, longitude };
+      expect(parseSavedCourse(JSON.stringify(selected))).toEqual(selected);
+    }
+  });
+
   it("ignores corrupt, invalid and forged saved results", () => {
     for (const raw of [null, "broken", "null", "{}", JSON.stringify({ ...course, latitude: "35.5" }),
-      JSON.stringify({ ...course, longitude: 0 }), JSON.stringify({ ...course, name: "" }),
+      JSON.stringify({ ...course, longitude: 181 }), JSON.stringify({ ...course, name: "" }),
       JSON.stringify({ ...course, sourceUrl: "javascript:alert(1)" }),
       JSON.stringify({ ...course, sourceUrl: "https://www.openstreetmap.org/way/456" })]) {
       expect(parseSavedCourse(raw)).toBeNull();

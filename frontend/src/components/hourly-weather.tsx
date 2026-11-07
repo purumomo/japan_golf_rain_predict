@@ -63,7 +63,7 @@ const copy = {
   },
 };
 
-export function HourlyWeather({ language, hours, roundContext }: { language: Language; hours: WeatherHour[]; roundContext?: ReactNode }) {
+export function HourlyWeather({ language, hours, roundContext, timezone }: { language: Language; hours: WeatherHour[]; roundContext?: ReactNode; timezone: string }) {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const t = copy[language];
@@ -92,7 +92,7 @@ export function HourlyWeather({ language, hours, roundContext }: { language: Lan
       <RoundWeatherScene weather={selected} paused={paused} />
       <div className="absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-2 p-3">
         <div className="rounded-xl bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm">
-          <p className="text-sm font-semibold tabular-nums text-slate-800">{selected.playStart ?? selected.bucketStart}–{selected.playEnd ?? selected.bucketEnd} <span className="text-[10px] font-normal text-slate-500">JST</span></p>
+          <p className="text-sm font-semibold tabular-nums text-slate-800">{selected.playStart ?? selected.bucketStart}–{selected.playEnd ?? selected.bucketEnd} <span className="text-[10px] font-normal text-slate-500">{timezone}</span></p>
           <p className={`mt-1 text-[11px] ${wet || snowing || raining ? "text-sky-800" : "text-emerald-800"}`}>{condition}{snowing ? ` · ${t.snow} ${selected.snowfallCm} cm` : ""}</p>
         </div>
         <button type="button" onClick={() => setPaused(!paused)} aria-pressed={paused} aria-label={paused ? t.play : t.pause} title={paused ? t.play : t.pause}
@@ -131,7 +131,7 @@ export function HourlyWeather({ language, hours, roundContext }: { language: Lan
       <p className="mt-2">{t.visualNote}</p>
       <ul className="mt-2 space-y-2">
         {hours.map((hour) => <li key={hour.time}>
-          <p>{t.source}: {hour.bucketStart}–{hour.bucketEnd} JST · {t.instant}: {hour.bucketEnd}</p>
+          <p>{t.source}: {hour.bucketStart}–{hour.bucketEnd} {timezone} · {t.instant}: {hour.bucketEnd}</p>
           <p>{t.temperature}: {hour.temperatureC ?? "—"}°C · {t.wind}: {hour.windSpeedKmh == null ? "—" : (hour.windSpeedKmh / 3.6).toFixed(1)} m/s · {t.rain}: {hour.precipitationMm ?? "—"} mm · {t.chance}: {hour.precipitationProbability ?? "—"}%</p>
           <p>{t.snow}: {hour.snowfallCm ?? "—"} cm</p>
           {hour.isPartialHour ? <p>{t.partial(hour.overlapMinutes)}</p> : null}

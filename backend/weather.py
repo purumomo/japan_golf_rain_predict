@@ -11,7 +11,7 @@ WEATHER_CODES = {0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71,
                  95, 96, 99}
 
 
-def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
+def fetch_forecast_window(course, date, tee_time, get_json=fetch_json, timezone_name="Asia/Tokyo"):
     end_date = (calendar_date.fromisoformat(date) + timedelta(days=1)).isoformat()
     payload = get_json(
         "https://api.open-meteo.com/v1/forecast",
@@ -22,7 +22,8 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
                 "precipitation_probability,precipitation,wind_speed_10m,temperature_2m,"
                 "rain,showers,snowfall,weather_code,cloud_cover,is_day"
             ),
-            "timezone": "Asia/Tokyo",
+            "timezone": timezone_name,
+            "timeformat": "unixtime",
             "wind_speed_unit": "kmh",
             "precipitation_unit": "mm",
             "temperature_unit": "celsius",
@@ -69,7 +70,7 @@ def fetch_forecast_window(course, date, tee_time, get_json=fetch_json):
             "isDay": bool(daylight) if daylight in (0, 1) else None,
         })
     try:
-        hours = highlight_hours(select_overlapping_hours(entries, date, tee_time))
+        hours = highlight_hours(select_overlapping_hours(entries, date, tee_time, timezone_name=timezone_name))
     except (ValueError, TypeError) as error:
         raise ApiError(502, "Invalid forecast timestamps.") from error
     return {"hours": hours, "summary": summarize_risk(hours), "clothing": clothing_advice(hours)}

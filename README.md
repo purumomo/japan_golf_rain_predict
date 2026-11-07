@@ -1,6 +1,6 @@
 # Golf Rain
 
-Separate Next.js frontend and Flask backend for online Japanese golf-course search and real five-hour weather forecasts. No local course JSON, database or authentication.
+Separate Next.js frontend and Flask backend for online worldwide golf-course search and real five-hour weather forecasts in each course’s local time zone. No local course JSON, database or authentication.
 
 Start both services from separate terminals at the repository root.
 

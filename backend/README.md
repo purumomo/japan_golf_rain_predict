@@ -1,6 +1,6 @@
 # Golf Rain Flask backend
 
-Python 3.11+ is recommended. The backend owns online course search, provider HTTP calls, input validation, caching, throttling and JST tee-time forecast calculations. It stores no course directory or database.
+Python 3.11+ is recommended. The backend owns online course search, provider HTTP calls, input validation, caching, throttling and course-local tee-time forecast calculations. It stores no course directory or database.
 
 From this directory:
 
@@ -19,6 +19,7 @@ The backend listens at http://127.0.0.1:5001. Port 5001 avoids macOS services th
 | --- | --- | --- |
 | GET | `/api/health` | Service health; no upstream call |
 | GET | `/api/courses?q=...` | Photon search with a PGM-prefix retry and Overpass fallback |
+| POST | `/api/course-context` | Resolve the selected coordinates to an IANA time zone and local date bounds |
 | POST | `/api/forecast` | Real Open-Meteo forecast for `{ course, date, teeTime }` |
 
 A forecast `course` is the selected object returned by search, including `id`, `name`, `prefecture`, `address`, `latitude`, `longitude`, and `sourceUrl`. The response shape stays compatible with the frontend. Invalid input returns 400; unsupported dates return 422 with current bounds; search throttling returns 429; provider failures return 502. No mock fallback values are served.
@@ -65,3 +66,16 @@ Hourly `highlights` are presentation hints calculated only from the selected rou
 ```
 
 Tests use explicitly synthetic fixtures only and cover time windows, timezone boundaries, response parsing, course validation, caching, concurrency, throttling, dotenv loading, request limits and provider failures. Provider documentation checked during implementation: [Flask](https://flask.palletsprojects.com/en/stable/), [Requests](https://requests.readthedocs.io/en/latest/user/quickstart/), [Photon](https://github.com/komoot/photon/blob/master/docs/api-v1.md), [Open-Meteo](https://open-meteo.com/en/docs).
+
+
+## Worldwide courses and local time
+
+Search accepts worldwide golf-course results, without Japan-only coordinate or country filters or Tokyo ranking. Addresses include the provider's country when available. Photon and Overpass coverage can be incomplete; no local course directory is bundled.
+
+`POST /api/course-context` accepts `{ "course": <selected search result> }` and returns `{ "timezone": "America/Los_Angeles", "bounds": { "minDate": "…", "maxDate": "…" } }`. Flask resolves the IANA zone via the documented Open-Meteo forecast endpoint with `timezone=auto`. Successful coordinate-to-zone lookups are cached for 24 hours (100 entries per worker); failed lookups never default to Japan. No new paid service or key is required. A time-zone lookup failure returns 502.
+
+Forecast validation independently resolves the selected coordinates' zone; a client-supplied zone is ignored. Tomorrow through day six uses the course's calendar. Open-Meteo hourly data uses `timeformat=unixtime`, so overlaps and five elapsed hours are computed in UTC before formatting in the course zone. `round.start`, `round.end` and hourly `time` retain UTC offsets, including across daylight-saving transitions. Nonexistent or ambiguous local tee times return 400. Source retrieval timestamps remain UTC instants and are formatted in the course zone in the UI (UTC before a course is selected). Old browser-saved courses remain compatible and have their zone resolved on restoration.
+
+Synthetic tests additionally cover worldwide coordinates, timezone provider errors, local date bounds across the date line, fractional offsets, midnight and both daylight-saving transitions. Time-zone resolution uses the system IANA database; keep the deployment's timezone data current. Open-Meteo's zone lookup availability and public search service limits remain dependencies.
+
+Live validation on 2026-11-07: Pebble Beach Golf Course (America/Los_Angeles), Royal Birkdale Golf Club (Europe/London), and Royal Melbourne Golf Club (Australia/Melbourne) returned real searches and 300-minute forecasts for local 08:30–13:30. Production Next.js same-origin forwarding and a 390px Chrome mobile viewport were verified, including the course-local default date and search invalidation. Provider coverage is still not exhaustive; for example, a St Andrews Links query returned unrelated names and requires user address/map verification.

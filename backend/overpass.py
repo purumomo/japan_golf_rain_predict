@@ -9,9 +9,8 @@ def course_name_query(query):
     pattern = json.dumps(re.escape(query), ensure_ascii=False)
     return (
         '[out:json][timeout:10][maxsize:33554432];'
-        'area["ISO3166-1"="JP"]["admin_level"="2"]->.japan;'
         'nwr["leisure"="golf_course"]'
-        f'[~"^(name|name:ja|name:en|alt_name|official_name)$"~{pattern},i](area.japan);'
+        f'[~"^(name|name:ja|name:en|alt_name|official_name)$"~{pattern},i];'
         'out center tags 50;'
     )
 
@@ -32,7 +31,7 @@ def course_features(payload):
         center = element if element.get("type") == "node" else element.get("center")
         if not isinstance(tags, dict) or not isinstance(center, dict):
             continue
-        if tags.get("leisure") != "golf_course" or tags.get("addr:country", "JP") != "JP":
+        if tags.get("leisure") != "golf_course":
             continue
         features.append({
             "properties": {
@@ -40,7 +39,8 @@ def course_features(payload):
                 "osm_id": element.get("id"),
                 "osm_key": "leisure",
                 "osm_value": "golf_course",
-                "countrycode": "JP",
+                "countrycode": tags.get("addr:country"),
+                "country": tags.get("addr:country"),
                 "name": tags.get("name") or tags.get("name:ja"),
                 "state": tags.get("addr:province") or tags.get("addr:state"),
                 "city": tags.get("addr:city"),

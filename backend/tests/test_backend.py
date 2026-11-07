@@ -253,7 +253,6 @@ class SearchTests(unittest.TestCase):
             None, {}, {**element, "lat": True}, {**element, "lon": float("nan")},
             {**element, "type": "bogus"},
             {**element, "tags": {"leisure": "parking", "name": "Mock Parking"}},
-            {**element, "tags": {**element["tags"], "addr:country": "US"}},
         ]
         courses = parse_course_results(course_features({"elements": [element, element, *invalid]}))
         self.assertEqual(len(courses), 1)
@@ -262,21 +261,24 @@ class SearchTests(unittest.TestCase):
     def test_overpass_query_treats_input_as_literal_text(self):
         query = '総成.*"];out;('
         statement = course_name_query(query)
-        encoded_pattern = statement.split(')$"~', 1)[1].split(',i](area.japan)', 1)[0]
+        encoded_pattern = statement.split(')$"~', 1)[1].split(',i]', 1)[0]
         self.assertEqual(re.compile(json.loads(encoded_pattern)).fullmatch(query).group(), query)
         self.assertIsNone(re.search(json.loads(encoded_pattern), "総成anything"))
-        self.assertIn('["ISO3166-1"="JP"]', statement)
+        self.assertNotIn("area.japan", statement)
         self.assertIn('["leisure"="golf_course"]', statement)
 
-    def test_filters_duplicates_wrong_country_and_non_courses(self):
+    def test_filters_duplicates_and_non_courses_globally(self):
         wrong = copy.deepcopy(FEATURE)
         wrong["properties"]["countrycode"] = "US"
+        wrong["properties"]["osm_id"] = 456
+        wrong["geometry"]["coordinates"] = [-121.95, 36.56]
         parking = copy.deepcopy(FEATURE)
         parking["properties"]["osm_value"] = "parking"
         invalid = copy.deepcopy(FEATURE)
         invalid["geometry"]["coordinates"] = [35.8, 140.3]
         results = parse_course_results({"features": [FEATURE, FEATURE, wrong, parking, invalid, None]})
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[1]["longitude"], -121.95)
         self.assertEqual(results[0]["latitude"], 35.8)
         self.assertEqual(results[0]["longitude"], 140.3)
         self.assertEqual(results[0]["sourceUrl"], COURSE["sourceUrl"])
@@ -344,7 +346,8 @@ class SearchTests(unittest.TestCase):
 class ApiTests(unittest.TestCase):
     def setUp(self):
         self.fetcher = Mock(return_value={"hours": [], "summary": summarize_risk([])})
-        self.app = create_app({"TESTING": True, "FORECAST_FETCHER": self.fetcher})
+        self.app = create_app({"TESTING": True, "FORECAST_FETCHER": self.fetcher,
+                               "TIMEZONE_RESOLVER": Mock(return_value="Asia/Tokyo")})
         self.client = self.app.test_client()
         self.body = {"course": COURSE, "date": forecast_bounds()["minDate"], "teeTime": "08:30"}
 
@@ -380,10 +383,10 @@ class ApiTests(unittest.TestCase):
     def test_selected_coordinates_preserve_frontend_forecast_contract(self):
         response = self.client.post("/api/forecast", json=self.body)
         self.assertEqual(response.status_code, 200)
-        self.fetcher.assert_called_once_with(COURSE, self.body["date"], "08:30")
+        self.fetcher.assert_called_once_with(COURSE, self.body["date"], "08:30", timezone_name="Asia/Tokyo")
         self.assertEqual(response.json["course"], COURSE)
         self.assertEqual(response.json["timezone"], "Asia/Tokyo")
-        self.assertEqual(response.json["round"]["end"], self.body["date"] + "T13:30")
+        self.assertEqual(response.json["round"]["end"], self.body["date"] + "T13:30+09:00")
         self.assertTrue(response.json["missingForecast"])
         self.assertEqual(response.json["summary"], {
             "highestHourlyProbability": None, "totalPrecipitationMm": None,
@@ -397,7 +400,7 @@ class ApiTests(unittest.TestCase):
             {},
             {**self.body, "teeTime": "25:00"},
             {**self.body, "date": "2026-02-30"},
-            {**self.body, "course": {**COURSE, "latitude": 0}},
+            {**self.body, "course": {**COURSE, "latitude": 91}},
         ]
         for body in bodies:
             self.assertEqual(self.client.post("/api/forecast", json=body).status_code, 400)

@@ -31,9 +31,9 @@ def valid_course(course):
         )
         and bool(course["name"].strip())
         and is_number(course.get("latitude"))
-        and 20 <= course["latitude"] <= 46
+        and -90 <= course["latitude"] <= 90
         and is_number(course.get("longitude"))
-        and 122 <= course["longitude"] <= 154
+        and -180 <= course["longitude"] <= 180
         and course.get("sourceUrl") == osm_source_url(course_id)
     )
 
@@ -56,8 +56,7 @@ def parse_course_results(payload, limit=15):
         coords = geometry.get("coordinates")
         if geometry.get("type") != "Point" or not isinstance(coords, list) or len(coords) < 2:
             continue
-        if (props.get("countrycode"), props.get("osm_key"), props.get("osm_value")) != (
-            "JP",
+        if (props.get("osm_key"), props.get("osm_value")) != (
             "leisure",
             "golf_course",
         ):
@@ -69,7 +68,7 @@ def parse_course_results(payload, limit=15):
         course_id = f"osm-{osm_type}-{osm_id}"
         parts = [
             props.get(key)
-            for key in ("state", "county", "city", "district", "locality", "street", "housenumber")
+            for key in ("country", "state", "county", "city", "district", "locality", "street", "housenumber")
         ]
         course = {
             "id": course_id,
@@ -122,9 +121,6 @@ class CourseSearch:
                 "q": query,
                 "limit": 15,
                 "include": "osm.leisure.golf_course",
-                "countrycode": "JP",
-                "lat": 35.68,
-                "lon": 139.76,
             }
             payload = self.get_json(self.endpoint, params)
             courses = parse_course_results(payload)
@@ -139,10 +135,6 @@ class CourseSearch:
             if not courses and self.overpass_endpoint:
                 payload = self.get_json(self.overpass_endpoint, {"data": course_name_query(query)})
                 courses = parse_course_results(course_features(payload), limit=50)
-                courses.sort(key=lambda course: (
-                    (course["latitude"] - 35.68) ** 2
-                    + ((course["longitude"] - 139.76) * math.cos(math.radians(35.68))) ** 2
-                ))
                 courses = courses[:15]
                 provider = "Overpass / OpenStreetMap"
             result = {

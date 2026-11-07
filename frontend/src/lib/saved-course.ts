@@ -10,7 +10,7 @@ export function parseSavedCourse(raw: string | null): GolfCourse | null {
     const match = /^osm-(node|way|relation)-([1-9]\d*)$/.exec(course.id);
     if (!match || !course.name.trim() || course.name.length > 300 || course.prefecture.length > 100 || course.address.length > 600) return null;
     if (!Number.isFinite(course.latitude) || !Number.isFinite(course.longitude)
-      || course.latitude < 20 || course.latitude > 46 || course.longitude < 122 || course.longitude > 154) return null;
+      || course.latitude < -90 || course.latitude > 90 || course.longitude < -180 || course.longitude > 180) return null;
     if (course.sourceUrl !== `https://www.openstreetmap.org/${match[1]}/${match[2]}`) return null;
     return { id: course.id, name: course.name, prefecture: course.prefecture, address: course.address,
       latitude: course.latitude, longitude: course.longitude, sourceUrl: course.sourceUrl };
