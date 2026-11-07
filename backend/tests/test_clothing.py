@@ -31,9 +31,40 @@ class ClothingTests(unittest.TestCase):
                 self.assertEqual(clothing_advice([hour(temperature)])["items"], items)
 
     def test_rain_gear_for_amount_or_probability(self):
-        for entry in [hour(rain=0.1), hour(probability=40)]:
+        for entry in [hour(rain=0.5), hour(probability=40)]:
             self.assertEqual(clothing_advice([entry])["items"], ["polo", "golfPants", "rainJacket", "rainHat", "waterproofShoes", "spareGloves", "towel"])
         self.assertIn("rainPants", clothing_advice([hour(rain=3)])["items"])
+
+    def test_trace_precipitation_does_not_automatically_add_a_raincoat(self):
+        advice = clothing_advice([hour(25, rain=0.1, probability=10)])
+        self.assertEqual(advice["items"], ["polo", "lightPants", "cap"])
+        self.assertNotIn("rainJacket", advice["wearItems"])
+
+    def test_rain_chance_packs_shell_without_hiding_the_vest(self):
+        advice = clothing_advice([hour(14, rain=0.1, probability=50)])
+        self.assertIn("vest", advice["wearItems"])
+        self.assertIn("rainJacket", advice["packItems"])
+        self.assertNotIn("rainJacket", advice["wearItems"])
+        self.assertNotIn("rainHat", advice["wearItems"])
+
+    def test_moderate_cool_wind_packs_shell_and_strong_cold_wind_wears_it(self):
+        advice = clothing_advice([hour(14, wind=18)])
+        self.assertIn("vest", advice["wearItems"])
+        self.assertIn("windJacket", advice["packItems"])
+        self.assertNotIn("windJacket", advice["wearItems"])
+        stronger = clothing_advice([hour(14, wind=25.2)])
+        self.assertIn("windJacket", stronger["wearItems"])
+        self.assertNotIn("windJacket", stronger["packItems"])
+        unrelated = clothing_advice([hour(14, wind=0), hour(19, wind=30)])
+        self.assertNotIn("windJacket", unrelated["wearItems"])
+
+    def test_substantial_rain_wears_shell_and_pack_list_is_disjoint(self):
+        advice = clothing_advice([hour(14, rain=3)])
+        self.assertIn("rainJacket", advice["wearItems"])
+        self.assertIn("rainPants", advice["wearItems"])
+        self.assertIn("spareGloves", advice["packItems"])
+        self.assertFalse(set(advice["wearItems"]) & set(advice["packItems"]))
+        self.assertEqual(set(advice["wearItems"]) | set(advice["packItems"]), set(advice["items"]))
 
     def test_wind_layer_and_no_duplicate_outerwear(self):
         self.assertIn("windJacket", clothing_advice([hour(19, wind=18)])["items"])

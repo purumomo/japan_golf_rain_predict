@@ -69,6 +69,7 @@ describe("expanded clothing checklist", () => {
       const dry = renderToStaticMarkup(<GolferOutfit items={["longSleeve", "vest", "golfPants"]} label="Synthetic mild golf round" look={look} />);
       for (const item of ["golf-club", "golf-glove", "golf-bag", "golf-ball"])
         expect(dry).toContain(`data-equipment="${item}"`);
+      expect(dry).toContain('data-club="driver"');
       expect(dry).toContain('data-garment="golf-cap"');
       expect(dry).toContain('data-sleeves="long"');
       const rainy = renderToStaticMarkup(<GolferOutfit items={["polo", "lightPants", "cap", "rainHat", "rainJacket"]} label="Synthetic warm wet golf round" look={look} />);
@@ -76,5 +77,33 @@ describe("expanded clothing checklist", () => {
       expect(rainy).not.toContain('data-garment="golf-cap"');
       expect(rainy).toContain('data-garment="rainJacket"');
     }
+  });
+
+  it("renders a sleeveless vest over the shirt while marking the shell as packed", () => {
+    const advice: ClothingAdviceData = {
+      ...wardrobe, items: ["longSleeve", "vest", "golfPants", "windJacket", "rainJacket"],
+      wearItems: ["longSleeve", "vest", "golfPants"], packItems: ["windJacket", "rainJacket"],
+    };
+    const html = renderToStaticMarkup(<ClothingAdvice language="zh" advice={advice} />);
+    expect(html).toContain('data-garment="vest"');
+    expect(html).not.toContain('data-garment="rainJacket"');
+    expect(html).not.toContain('data-garment="windJacket"');
+    expect(html).toContain("备用");
+    expect(formatRoundPreparation(advice, "zh")).toContain("防风外套（备用）");
+    for (let index = 0; index < OUTFIT_LOOK_COUNT; index++) {
+      const outfit = renderToStaticMarkup(<GolferOutfit items={advice.wearItems!} label="Synthetic vest outfit" look={getOutfitLook(index)} />);
+      expect(outfit).toContain('data-garment="vest"');
+      expect(outfit).not.toMatch(/data-garment="(rainJacket|windJacket|fleece|insulatedJacket)"/);
+    }
+  });
+
+  it("shows an explicitly worn rain shell and stays conservative with older API responses", () => {
+    const items: ClothingAdviceData["items"] = ["longSleeve", "vest", "golfPants", "rainJacket"];
+    const rainy = renderToStaticMarkup(<ClothingAdvice language="zh" advice={{ ...wardrobe, items, wearItems: items, packItems: [] }} />);
+    expect(rainy).toContain('data-garment="rainJacket"');
+    expect(rainy).not.toContain('data-garment="vest"');
+    const older = renderToStaticMarkup(<ClothingAdvice language="zh" advice={{ ...wardrobe, items }} />);
+    expect(older).toContain('data-garment="vest"');
+    expect(older).not.toContain('data-garment="rainJacket"');
   });
 });

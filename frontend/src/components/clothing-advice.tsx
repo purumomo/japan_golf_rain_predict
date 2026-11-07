@@ -9,6 +9,8 @@ type ClothingItem = "warmLayer" | "longSleeve" | "polo" | "rainJacket" | "windJa
 
 export type ClothingAdviceData = {
   items: ClothingItem[];
+  wearItems?: ClothingItem[];
+  packItems?: ClothingItem[];
   temperatureMinC: number | null;
   temperatureMaxC: number | null;
   incomplete: boolean;
@@ -19,6 +21,7 @@ export type ClothingAdviceData = {
 
 const copy = {
   zh: {
+    packed: "备用",
     title: "这轮怎么穿", range: "本轮小时预报气温", empty: "天气数据不足，暂时无法整理衣物建议。",
     illustration: "本轮穿搭示意", shuffle: "换个造型", shuffleNote: "随机换造型，衣物仍按本轮天气推荐。", male: "男士造型", female: "女士造型", look: "搭好这一轮",
     note: "按本轮气温、降雨和风速整理，怕冷怕热可自行增减。", partial: "部分天气数据缺失，清单可能不完整。",
@@ -43,6 +46,7 @@ const copy = {
     },
   },
   ja: {
+    packed: "携帯用",
     title: "ラウンドのおすすめコーデ", range: "ラウンド中の時間別予報気温", empty: "ウェアを提案するための天気データが不足しています。",
     illustration: "ラウンドの着用イメージ", shuffle: "コーデを変える", shuffleNote: "見た目をランダムに変更。ウェアは今回の予報に合わせています。", male: "メンズコーデ", female: "レディースコーデ", look: "ラウンドを心地よく",
     note: "気温・雨・風をもとにした持ち物の目安です。暑がり・寒がりに合わせて調整してください。", partial: "一部の天気データがないため、リストが不完全な場合があります。",
@@ -67,6 +71,7 @@ const copy = {
     },
   },
   en: {
+    packed: "Pack",
     title: "What to wear for this round", range: "Hourly forecast temperatures for your round", empty: "Not enough weather data for a clothing checklist yet.",
     illustration: "Round outfit illustration", shuffle: "Shuffle look", shuffleNote: "A random look, dressed for the same round forecast.", male: "Men’s look", female: "Women’s look", look: "Dress for your round",
     note: "A packing guide based on temperature, rain and wind. Adjust for how warm or cold you tend to feel.", partial: "Some weather data is missing, so the list may be incomplete.",
@@ -151,13 +156,14 @@ export function GolferOutfit({ items, label, look = getOutfitLook(0) }: {
         <path d="M104 82 V98 L119 112 L136 98 V80Z" fill={look.skin} />
         {rainJacket ? <path d="M95 109 Q78 76 98 67 Q119 58 142 73 Q157 89 143 110" fill={outer} /> : null}
         <g className="outfit-arm" data-sleeves={longSleeves ? "long" : "short"}>
-          <g data-equipment="golf-club">
-            <path d="M67 200 L33 298" fill="none" stroke="#8e9da2" strokeWidth="3" />
+          <g data-equipment="golf-club" data-club="driver">
+            <path d="M67 200 L31 292" fill="none" stroke="#596c77" strokeWidth="2.6" />
             <path d="M72 185 L66 204" fill="none" stroke={look.trousers} strokeWidth="6" strokeLinecap="round" />
             <path d="M70 189 L72 190 M68 195 L70 196 M66 201 L68 202" stroke="#b3c2b8" strokeWidth="1.2" />
-            {look.pattern === 0 ? <path d="M33 296 L37 302 L15 309 L12 304Z" fill="#a8b4b6" />
-              : <path d="M32 296 Q40 296 37 303 L22 310 Q14 311 16 304Z" fill="#c8d0d0" />}
-            <path d="M20 305 L32 301 M23 308 L35 304" fill="none" stroke="#7c8d90" strokeWidth="1" />
+            <path d="M33 292 C24 285 8 286 5 296 C1 305 13 312 24 311 L36 307 Q43 302 39 297Z" fill="#293e4b" />
+            <path d="M11 295 Q19 289 30 293" fill="none" stroke="#7f9aab" strokeWidth="2" strokeLinecap="round" />
+            <path d="M36 295 Q42 299 37 306 L33 307 Q38 300 33 296Z" fill="#b7c6cd" strokeWidth="1" />
+            <path d="M35 298 L39 299 M35 301 L39 302 M34 304 L37 305" fill="none" stroke="#6e8794" strokeWidth="0.8" />
           </g>
           <path d="M88 104 Q74 106 69 123 L55 168 L62 205 Q66 211 72 205 L72 166 L91 133" fill={look.skin} />
           <path data-equipment="golf-glove" d="M60 190 L73 189 L73 204 Q67 216 60 206Z" fill="#fcf9ef" />
@@ -175,14 +181,14 @@ export function GolferOutfit({ items, label, look = getOutfitLook(0) }: {
         <path d="M119 109 V134" fill="none" stroke="#7b8980" />
         <circle cx="122" cy="119" r="1.2" fill="#65796f" stroke="none" />
         <circle cx="122" cy="127" r="1.2" fill="#65796f" stroke="none" />
-        {vest && !jacket ? <>
-          <path d="M100 97 L90 104 L94 142 L87 194 Q119 204 151 194 L144 142 L149 104 L137 97 L119 120Z" fill={look.accent} />
-          <path d="M119 121 V197 M96 153 H109 M130 153 H143" stroke="#c8d8c4" fill="none" />
+        {vest && !jacket ? <g data-garment="vest">
+          <path d="M101 98 L94 101 Q97 121 94 139 L93 189 Q119 196 145 189 L144 139 Q141 121 145 101 L137 98 L119 125Z" fill={look.accent} />
+          <path d="M101 98 L119 125 L137 98 M94 102 Q98 121 94 138 M145 102 Q140 121 144 138 M94 185 Q119 192 144 185" stroke="#edf0dc" strokeWidth="2.5" fill="none" />
           {look.pattern !== 2 ? <g stroke="#e9eddf" strokeWidth="1" fill={look.outer}>
             <path d="M101 132 L108 143 L101 154 L94 143Z M136 132 L143 143 L136 154 L129 143Z M101 154 L108 165 L101 176 L94 165Z M136 154 L143 165 L136 176 L129 165Z" />
             <path d="M94 131 L108 155 M129 131 L143 155 M94 153 L108 177 M129 153 L143 177" fill="none" />
           </g> : null}
-        </> : null}
+        </g> : null}
         {jacket ? <>
           <path data-garment={rainJacket ? "rainJacket" : windJacket ? "windJacket" : insulated ? "insulatedJacket" : "fleece"} d={female || look.tailored ? "M99 96 L88 104 L96 151 L84 196 L112 200 L119 109Z M137 96 L150 104 L142 151 L155 196 L126 200 L119 109Z" : "M99 96 L88 104 L84 196 L112 200 L119 109Z M137 96 L150 104 L155 196 L126 200 L119 109Z"} fill={outer} />
           {look.pattern === 2 ? <path d="M94 132 H113 V145 H93Z M126 132 H145 L146 145 H126Z" fill={look.accent} stroke="none" /> : null}
@@ -276,6 +282,10 @@ export function ClothingAdvice({ language, advice }: { language: Language; advic
   const t = copy[language];
   const [lookIndex, setLookIndex] = useState(0);
   const look = getOutfitLook(lookIndex);
+  const wearItems = advice?.wearItems ?? advice?.items.filter((item) =>
+    !["rainJacket", "windJacket", "rainPants", "rainHat", "spareGloves", "towel"].includes(item),
+  ) ?? [];
+  const packItems = advice?.packItems ?? advice?.items.filter((item) => !wearItems.includes(item)) ?? [];
   return (
     <section className="@container overflow-hidden rounded-2xl border border-amber-200 bg-[#faf7ef]">
       <header className="px-4 pt-4">
@@ -286,7 +296,7 @@ export function ClothingAdvice({ language, advice }: { language: Language; advic
       {advice?.items.length ? <>
         <div className="mx-4 mt-4 flex flex-col items-center rounded-2xl border border-white bg-gradient-to-br from-[#edf1e5] via-[#f7f3e9] to-[#eee1d2] px-3 pt-3 pb-4">
           <div role="status" aria-live="polite" aria-atomic="true" className="w-full text-center">
-            <GolferOutfit items={advice.items} look={look} label={`${t.illustration} · ${t[look.gender]}`} />
+            <GolferOutfit items={wearItems} look={look} label={`${t.illustration} · ${t[look.gender]}`} />
             <p className="text-xs text-emerald-900">{t[look.gender]}</p>
           </div>
           <button type="button" onClick={() => setLookIndex((current) => randomizeOutfitLook(current))}
@@ -302,7 +312,9 @@ export function ClothingAdvice({ language, advice }: { language: Language; advic
           {advice.items.map((item) => <li key={item} className="flex items-start gap-2 rounded-xl border border-stone-200/70 bg-white/90 p-3">
             <ClothingIcon item={item} />
             <div className="min-w-0">
-              <p className="text-xs font-semibold leading-5 text-slate-900">{t.items[item][0]}</p>
+              <p className="text-xs font-semibold leading-5 text-slate-900">{t.items[item][0]}
+                {packItems.includes(item) ? <span className="ml-1.5 inline-block rounded bg-amber-50 px-1.5 text-[10px] font-normal text-amber-800">{t.packed}</span> : null}
+              </p>
               <p className="mt-1 text-[11px] leading-5 text-slate-500">{t.items[item][1]}</p>
             </div>
           </li>)}

@@ -21,7 +21,8 @@ def clothing_advice(hours):
     temperatures = values["temperatureC"]
     minimum = min(temperatures, default=None)
     maximum = max(temperatures, default=None)
-    rainy = max(values["precipitationMm"], default=0) > 0 or max(
+    rainfall = max(values["precipitationMm"], default=0)
+    rainy = rainfall >= 0.5 or max(
         values["precipitationProbability"], default=0
     ) >= 40
     # Require cool temperatures and wind in the same hour, not separate round extremes.
@@ -48,16 +49,30 @@ def clothing_advice(hours):
             items.append("cap")
         if maximum >= 28:
             items.append("towel")
+    worn_items = [item for item in items if item != "towel"]
     if rainy:
         items.extend(["rainJacket", "rainHat", "waterproofShoes", "spareGloves"])
         if "towel" not in items:
             items.append("towel")
-        if max(values["precipitationMm"], default=0) >= 3:
+        if rainfall >= 3:
             items.append("rainPants")
+        # A chance of rain means packing a shell, not wearing it throughout the round.
+        if rainfall >= 0.5:
+            worn_items.extend(["rainJacket", "rainHat", "waterproofShoes"])
+        if rainfall >= 3:
+            worn_items.append("rainPants")
     elif cool_and_windy and "insulatedJacket" not in items:
         items.append("windJacket")
+        if any(
+            is_number(hour.get("temperatureC")) and hour["temperatureC"] < 15
+            and is_number(hour.get("windSpeedKmh")) and hour["windSpeedKmh"] >= 25.2
+            for hour in hours
+        ):
+            worn_items.append("windJacket")
     return {
         "items": items,
+        "wearItems": worn_items,
+        "packItems": [item for item in items if item not in worn_items],
         "temperatureMinC": minimum,
         "temperatureMaxC": maximum,
         "temperatureTrend": forecast_trend(temperatures, len(hours), 2),
