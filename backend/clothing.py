@@ -24,15 +24,37 @@ def clothing_advice(hours):
     rainy = max(values["precipitationMm"], default=0) > 0 or max(
         values["precipitationProbability"], default=0
     ) >= 40
-    windy = max(values["windSpeedKmh"], default=0) >= 18
+    # Require cool temperatures and wind in the same hour, not separate round extremes.
+    cool_and_windy = any(
+        is_number(hour.get("temperatureC"))
+        and hour["temperatureC"] < 20
+        and is_number(hour.get("windSpeedKmh"))
+        and hour["windSpeedKmh"] >= 18
+        for hour in hours
+    )
     items = []
     if minimum is not None:
-        items.append("warmLayer" if minimum < 10 else "longSleeve" if minimum < 20 else "polo")
+        if minimum < 5:
+            items.extend(["warmLayer", "longSleeve", "insulatedJacket", "thermalPants", "beanie", "neckWarmer"])
+        elif minimum < 10:
+            items.extend(["warmLayer", "longSleeve", "fleece", "thermalPants"])
+        elif minimum < 15:
+            items.extend(["longSleeve", "vest", "golfPants"])
+        elif minimum < 20:
+            items.extend(["longSleeve", "golfPants"])
+        else:
+            items.extend(["polo", "lightPants" if minimum >= 25 else "golfPants"])
+        if maximum >= 25:
+            items.append("cap")
+        if maximum >= 28:
+            items.append("towel")
     if rainy:
-        items.extend(["rainJacket", "spareGloves"])
+        items.extend(["rainJacket", "rainHat", "waterproofShoes", "spareGloves"])
+        if "towel" not in items:
+            items.append("towel")
         if max(values["precipitationMm"], default=0) >= 3:
             items.append("rainPants")
-    elif windy:
+    elif cool_and_windy and "insulatedJacket" not in items:
         items.append("windJacket")
     return {
         "items": items,

@@ -42,11 +42,25 @@ def select_overlapping_hours(entries, date, tee_time, round_hours=ROUND_DURATION
 
 
 def summarize_risk(hours):
-    probability = max((hour["precipitationProbability"] or 0 for hour in hours), default=0)
-    rainfall = round(sum(hour["precipitationMm"] or 0 for hour in hours), 1)
-    risk = "low"
-    if probability >= 70 or rainfall >= 4:
-        risk = "high"
-    elif probability >= 40 or rainfall >= 1:
-        risk = "medium"
-    return {"highestHourlyProbability": probability, "totalPrecipitationMm": rainfall, "riskLevel": risk}
+    """Summarize complete hourly data without treating missing values as dry weather."""
+    coverage_complete = sum(hour["overlapMinutes"] for hour in hours) == ROUND_DURATION_HOURS * 60
+    probability_complete = coverage_complete and all(
+        hour["precipitationProbability"] is not None for hour in hours
+    )
+    rainfall_complete = coverage_complete and all(hour["precipitationMm"] is not None for hour in hours)
+    probability = max(hour["precipitationProbability"] for hour in hours) if probability_complete else None
+    # Sum full source buckets, including the portions outside a half-hour round boundary.
+    rainfall = round(sum(hour["precipitationMm"] for hour in hours), 1) if rainfall_complete else None
+    incomplete = not (probability_complete and rainfall_complete)
+    risk = "unknown" if incomplete else "low"
+    if not incomplete:
+        if probability >= 70 or rainfall >= 4:
+            risk = "high"
+        elif probability >= 40 or rainfall >= 1:
+            risk = "medium"
+    return {
+        "highestHourlyProbability": probability,
+        "totalPrecipitationMm": rainfall,
+        "riskLevel": risk,
+        "incomplete": incomplete,
+    }

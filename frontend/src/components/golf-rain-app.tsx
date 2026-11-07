@@ -5,12 +5,13 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ClothingAdvice, type ClothingAdviceData } from "@/components/clothing-advice";
 import { HourlyWeather, type WeatherHour } from "@/components/hourly-weather";
 import type { GolfCourse } from "@/lib/courses";
+import { LatestRequest } from "@/lib/latest-request";
 import type { Language } from "@/lib/language";
 import { formatRoundPreparation } from "@/lib/round-preparation";
 import { getSavedCourseSnapshot, getServerCourseSnapshot, parseSavedCourse, rememberCourse, subscribeSavedCourse } from "@/lib/saved-course";
 import { getForecastDateOptions, ROUND_DURATION_HOURS } from "@/lib/tee-window";
 
-type RiskLevel = "low" | "medium" | "high";
+type RiskLevel = "low" | "medium" | "high" | "unknown";
 
 type ForecastResponse = {
   course: GolfCourse;
@@ -31,8 +32,9 @@ type ForecastResponse = {
     maxDate: string;
   };
   summary: {
-    highestHourlyProbability: number;
-    totalPrecipitationMm: number;
+    highestHourlyProbability: number | null;
+    totalPrecipitationMm: number | null;
+    incomplete: boolean;
     riskLevel: RiskLevel;
   };
   hours: WeatherHour[];
@@ -77,6 +79,7 @@ type TranslationSet = {
   summaryBody: string;
   emptyState: string;
   missingForecast: string;
+  incompleteForecast: string;
   maxHourlyProbabilityLabel: string;
   rainfallTotalLabel: string;
   startTimeCardLabel: string;
@@ -126,10 +129,11 @@ const translations: Record<Language, TranslationSet> = {
     emptyState: "ゴルフ場・プレー日・スタート時間を選ぶと、ここにスタートから5時間分の予報が表示されます。",
     missingForecast: "選択した時間帯の予報が見つかりませんでした。日付かスタート時間を変えて再試行してください。",
     maxHourlyProbabilityLabel: "最も雨や雪が降りやすい1時間",
-    rainfallTotalLabel: "累積降水量",
+    incompleteForecast: "降水予報の一部が不足しています。ラウンド全体の雨のリスクは判断できません。集計に必要なデータが揃わない項目は「—」で表示します。",
+    rainfallTotalLabel: "対象時間帯の降水量合計",
     startTimeCardLabel: "スタート時間",
     riskLabelPrefix: "雨のリスク",
-    fiveHourWindowLabel: "予報の対象時間（約5時間）",
+    fiveHourWindowLabel: "重なる各1時間の予報を合計。スタート・終了時刻によってはプレー時間外の降水も含みます。",
     courseSummaryPrefix: "取得時刻",
     fetchedAtLabel: "取得時刻",
     sourceLabel: "予報の提供元",
@@ -137,8 +141,9 @@ const translations: Record<Language, TranslationSet> = {
     footerSource: "天気予報の提供元：Open-Meteo Forecast API / 時刻はすべて日本標準時（JST）で表示しています。",
     footerCourseData: "ゴルフ場検索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地図上の名称や位置が最新でない場合があります。",
     footerWarning: "注意: 予報はモデル出力であり、実測や的中保証ではありません。独自のラウンド全体降水確率は表示していません。",
-    riskLabels: { low: "低め", medium: "やや高め", high: "高め" },
+    riskLabels: { low: "低め", medium: "やや高め", high: "高め", unknown: "データ不足" },
     riskSummaries: {
+      unknown: "—",
       low: "今の予報では大雨リスクは高くありません。直前に再確認するのがおすすめです。",
       medium: "時間帯によっては雨が降る可能性があります。レインウェアを用意しておくと安心です。",
       high: "雨を見込んだ準備が必要そうです。スタート前後の時間帯は特に確認してください。",
@@ -180,10 +185,11 @@ const translations: Record<Language, TranslationSet> = {
     emptyState: "选择球场、日期和开球时间后，这里会显示 5 小时窗口的预报。",
     missingForecast: "未找到所选时间段的预报，请更换日期或开球时间后重试。",
     maxHourlyProbabilityLabel: "最可能有雨雪的一小时",
-    rainfallTotalLabel: "累计降水量",
+    incompleteForecast: "部分降水预报缺失，无法判断整轮降雨风险。缺少完整数据的汇总项显示为“—”。",
+    rainfallTotalLabel: "涉及时段的整小时降水合计",
     startTimeCardLabel: "开球时间",
     riskLabelPrefix: "级别",
-    fiveHourWindowLabel: "5 小时估算窗口",
+    fiveHourWindowLabel: "相加所有涉及的整小时预报；首尾时段可能包含打球时间以外的降水。",
     courseSummaryPrefix: "获取时间",
     fetchedAtLabel: "获取时间",
     sourceLabel: "数据来源",
@@ -191,8 +197,9 @@ const translations: Record<Language, TranslationSet> = {
     footerSource: "天气来源：Open-Meteo Forecast API / 所有显示时间均为 JST。",
     footerCourseData: "球场搜索：Photon / Overpass / © OpenStreetMap contributors（ODbL 1.0）。地图名称和位置可能更新滞后。",
     footerWarning: "注意：预报属于模型输出，并非实测，也不保证准确。页面不会生成自定义的整轮降雨概率。",
-    riskLabels: { low: "较低", medium: "中等", high: "较高" },
+    riskLabels: { low: "较低", medium: "中等", high: "较高", unknown: "数据不足" },
     riskSummaries: {
+      unknown: "—",
       low: "当前预报下强降雨风险不高，但仍建议在出发前再次确认。",
       medium: "部分时段可能下雨，建议按需要携带雨具。",
       high: "看起来需要按有雨准备，尤其建议重点关注开球前后的时段。",
@@ -234,10 +241,11 @@ const translations: Record<Language, TranslationSet> = {
     emptyState: "Choose a course, date, and tee time to see the five-hour forecast window here.",
     missingForecast: "No forecast was available for the selected window. Try another date or tee time.",
     maxHourlyProbabilityLabel: "Hour with the highest chance of rain or snow",
-    rainfallTotalLabel: "Total precipitation",
+    incompleteForecast: "Some precipitation forecasts are missing, so rain risk for the full round cannot be assessed. Incomplete summary metrics show —.",
+    rainfallTotalLabel: "Precipitation across full hourly buckets",
     startTimeCardLabel: "Tee time",
     riskLabelPrefix: "Level",
-    fiveHourWindowLabel: "Estimated five-hour window",
+    fiveHourWindowLabel: "Sum of overlapping full hourly forecasts; boundary hours may include precipitation outside your round.",
     courseSummaryPrefix: "Fetched at",
     fetchedAtLabel: "Fetched at",
     sourceLabel: "Source",
@@ -245,8 +253,9 @@ const translations: Record<Language, TranslationSet> = {
     footerSource: "Weather source: Open-Meteo Forecast API / All displayed times use JST.",
     footerCourseData: "Course search: Photon / Overpass / © OpenStreetMap contributors (ODbL 1.0). Map names and locations may be outdated.",
     footerWarning: "Note: Forecasts are model output, not observed rain, and are not guaranteed. The app does not invent a whole-round probability.",
-    riskLabels: { low: "Low", medium: "Moderate", high: "High" },
+    riskLabels: { low: "Low", medium: "Moderate", high: "High", unknown: "Insufficient data" },
     riskSummaries: {
+      unknown: "—",
       low: "The current forecast does not suggest a high rain risk, but a final check before departure is still a good idea.",
       medium: "Rain looks possible during some parts of the round, so bringing rain gear is sensible.",
       high: "You should plan for wet conditions, especially around the start of the round.",
@@ -304,7 +313,11 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
 
-  useEffect(() => () => searchController.current?.abort(), []);
+  const [forecastRequest] = useState(() => new LatestRequest());
+  useEffect(() => () => {
+    searchController.current?.abort();
+    forecastRequest.cancel();
+  }, [forecastRequest]);
   const [selectedDate, setSelectedDate] = useState(bounds.minDate);
   const [teeTime, setTeeTime] = useState("08:30");
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
@@ -320,7 +333,15 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
     hour.precipitationProbability !== null &&
     hour.precipitationProbability === forecast.summary.highestHourlyProbability,
   );
+  function invalidateForecast() {
+    forecastRequest.cancel();
+    setIsLoading(false);
+    setForecast(null);
+    setErrorMessage(null);
+  }
+
   function handleQueryChange(value: string) {
+    invalidateForecast();
     searchController.current?.abort();
     searchSequence.current += 1;
     setQuery(value);
@@ -336,6 +357,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   }
 
   async function handleCourseSearch() {
+    invalidateForecast();
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -371,12 +393,15 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedCourse) return;
+    const request = forecastRequest.start();
+    setForecast(null);
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
       const response = await fetch("/api/forecast", {
         method: "POST",
+        signal: request.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ course: selectedCourse, date: selectedDate, teeTime }),
       });
@@ -385,6 +410,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
         bounds?: { minDate: string; maxDate: string };
       };
 
+      if (!request.isCurrent()) return;
       if (!response.ok) {
         if (response.status === 422 && payload.bounds) {
           setErrorMessage(t.dateRangeError(payload.bounds.minDate, payload.bounds.maxDate));
@@ -397,10 +423,11 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
 
       setForecast(payload);
     } catch {
+      if (!request.isCurrent()) return;
       setErrorMessage(t.networkError);
       setForecast(null);
     } finally {
-      setIsLoading(false);
+      if (request.isCurrent()) setIsLoading(false);
     }
   }
 
@@ -436,18 +463,17 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
               maxLength={100}
-              disabled={isLoading}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  if (query.trim().length >= 2 && !isSearching && !isLoading) void handleCourseSearch();
+                  if (query.trim().length >= 2 && !isSearching) void handleCourseSearch();
                 }
               }}
               placeholder={t.searchPlaceholder}
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
             />
             <button type="button" onClick={() => void handleCourseSearch()}
-              disabled={query.trim().length < 2 || isSearching || isLoading}
+              disabled={query.trim().length < 2 || isSearching}
               className="rounded-2xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
               {isSearching ? t.searchLoading : t.searchButton}
             </button>
@@ -474,9 +500,8 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                   <button
                     key={course.id}
                     type="button"
-                    disabled={isLoading}
                     aria-pressed={isSelected}
-                    onClick={() => { setSelectedCourse(course); rememberCourse(course); setForecast(null); setErrorMessage(null); }}
+                    onClick={() => { invalidateForecast(); setSelectedCourse(course); rememberCourse(course); }}
                     className={`rounded-2xl border px-4 py-3 text-left transition ${
                       isSelected
                         ? "border-sky-500 bg-sky-50 shadow-sm"
@@ -520,9 +545,8 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
               </label>
               <select
                 id="play-date"
-                disabled={isLoading}
                 value={selectedDate}
-                onChange={(event) => { setSelectedDate(event.target.value); setForecast(null); setErrorMessage(null); }}
+                onChange={(event) => { invalidateForecast(); setSelectedDate(event.target.value); }}
                 className="round-input rounded-2xl border border-slate-300 px-4 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               >
                 {dateOptions.map((date) => <option key={date} value={date}>
@@ -536,9 +560,8 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
               </label>
               <select
                 id="tee-time"
-                disabled={isLoading}
                 value={teeTime}
-                onChange={(event) => { setTeeTime(event.target.value); setForecast(null); setErrorMessage(null); }}
+                onChange={(event) => { invalidateForecast(); setTeeTime(event.target.value); }}
                 className="round-input rounded-2xl border border-slate-300 px-4 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               >
                 {teeTimeOptions.map((option) => (
@@ -579,6 +602,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
             </div>
           ) : (
             <div className="space-y-5">
+              {forecast.summary.incomplete ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">{t.incompleteForecast}</p> : null}
               <HourlyWeather language={language} hours={forecast.hours} roundContext={
                 <div className="space-y-3 py-2">
                   <div className="space-y-1 text-xs leading-5 text-slate-500">
@@ -604,7 +628,7 @@ export function GolfRainApp({ bounds, initialLanguage }: GolfRainAppProps) {
                 </article>
                 <article className="rounded-2xl bg-sky-50 p-4 text-sky-950">
                   <div className="text-xs uppercase tracking-[0.2em] text-sky-700">{t.rainfallTotalLabel}</div>
-                  <div className="mt-2 text-3xl font-semibold">{forecast.summary.totalPrecipitationMm} mm</div>
+                  <div className="mt-2 text-3xl font-semibold">{forecast.summary.totalPrecipitationMm ?? "—"} mm</div>
                   <div className="mt-1 text-sm text-sky-700">{t.fiveHourWindowLabel}</div>
                 </article>
                 <article className="rounded-2xl bg-emerald-50 p-4 text-emerald-950">

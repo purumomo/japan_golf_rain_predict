@@ -104,18 +104,73 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(sum(hour["overlapMinutes"] for hour in hours), 300)
         self.assertFalse(any(hour["isPartialHour"] for hour in hours))
 
-    def test_null_values_remain_null_and_summary_is_max_hourly(self):
-        hours = [hourly_entry("2026-11-09T09:00", None, None), hourly_entry("2026-11-09T10:00", 80, 1)]
-        result = select_overlapping_hours(hours, "2026-11-09", "08:30")
-        self.assertIsNone(result[0]["precipitationProbability"])
-        self.assertEqual(
-            summarize_risk(result),
-            {
-                "highestHourlyProbability": 80,
-                "totalPrecipitationMm": 1,
-                "riskLevel": "high",
-            },
+    def window(self, probability=20, rainfall=0.2, tee_time="08:30"):
+        return select_overlapping_hours(
+            [hourly_entry(f"2026-11-09T{hour:02d}:00", probability, rainfall) for hour in range(8, 16)],
+            "2026-11-09", tee_time,
         )
+
+    def test_missing_probability_does_not_become_zero_or_low_risk(self):
+        hours = self.window()
+        hours[0]["precipitationProbability"] = None
+        summary = summarize_risk(hours)
+        self.assertIsNone(summary["highestHourlyProbability"])
+        self.assertEqual(summary["totalPrecipitationMm"], 1.2)
+        self.assertEqual(summary["riskLevel"], "unknown")
+        self.assertTrue(summary["incomplete"])
+        self.assertIsNone(hours[0]["precipitationProbability"])
+
+    def test_missing_rainfall_does_not_become_zero(self):
+        hours = self.window()
+        hours[0]["precipitationMm"] = None
+        summary = summarize_risk(hours)
+        self.assertIsNone(summary["totalPrecipitationMm"])
+        self.assertEqual(summary["highestHourlyProbability"], 20)
+        self.assertEqual(summary["riskLevel"], "unknown")
+        self.assertTrue(summary["incomplete"])
+
+    def test_all_null_and_empty_forecasts_are_unknown(self):
+        for hours in [[], self.window(None, None)]:
+            self.assertEqual(summarize_risk(hours), {
+                "highestHourlyProbability": None, "totalPrecipitationMm": None,
+                "riskLevel": "unknown", "incomplete": True,
+            })
+
+    def test_missing_hour_is_not_a_complete_round(self):
+        hours = self.window()
+        del hours[2]
+        summary = summarize_risk(hours)
+        self.assertTrue(summary["incomplete"])
+        self.assertIsNone(summary["totalPrecipitationMm"])
+        self.assertIsNone(summary["highestHourlyProbability"])
+        self.assertEqual(summary["riskLevel"], "unknown")
+
+    def test_complete_zero_forecast_is_low_risk(self):
+        self.assertEqual(summarize_risk(self.window(0, 0)), {
+            "highestHourlyProbability": 0, "totalPrecipitationMm": 0,
+            "riskLevel": "low", "incomplete": False,
+        })
+
+    def test_summary_is_highest_hourly_probability_not_round_probability(self):
+        hours = self.window()
+        hours[2]["precipitationProbability"] = 80
+        self.assertEqual(summarize_risk(hours), {
+            "highestHourlyProbability": 80, "totalPrecipitationMm": 1.2,
+            "riskLevel": "high", "incomplete": False,
+        })
+
+    def test_total_is_full_hour_buckets_without_prorating(self):
+        self.assertEqual(summarize_risk(self.window(rainfall=1))["totalPrecipitationMm"], 6)
+        self.assertEqual(summarize_risk(self.window(rainfall=1, tee_time="08:00"))[
+            "totalPrecipitationMm"], 5)
+
+    def test_risk_thresholds_for_complete_forecasts(self):
+        for probability, rainfall, expected in [
+            (39, 0, "low"), (40, 0, "medium"), (70, 0, "high"),
+            (0, 0.2, "medium"), (0, 1, "high"),
+        ]:
+            with self.subTest(probability=probability, rainfall=rainfall):
+                self.assertEqual(summarize_risk(self.window(probability, rainfall))["riskLevel"], expected)
 
 
 class SearchTests(unittest.TestCase):
@@ -330,6 +385,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json["timezone"], "Asia/Tokyo")
         self.assertEqual(response.json["round"]["end"], self.body["date"] + "T13:30")
         self.assertTrue(response.json["missingForecast"])
+        self.assertEqual(response.json["summary"], {
+            "highestHourlyProbability": None, "totalPrecipitationMm": None,
+            "riskLevel": "unknown", "incomplete": True,
+        })
         self.assertEqual(response.json["source"]["provider"], "Open-Meteo Forecast API")
 
     def test_invalid_input_never_calls_upstream(self):
